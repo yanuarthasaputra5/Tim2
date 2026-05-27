@@ -103,11 +103,14 @@ class RolePermissionController extends Controller
     // ==================== PERMISSIONS ====================
 
     /**
-     * List semua permission.
+     * List semua permission (dengan id dan name).
      */
     public function indexPermissions()
     {
-        $permissions = Permission::all()->pluck('name');
+        $permissions = Permission::all()->map(fn($p) => [
+            'id'   => $p->id,
+            'name' => $p->name,
+        ]);
 
         return response()->json(['success' => true, 'data' => $permissions]);
     }

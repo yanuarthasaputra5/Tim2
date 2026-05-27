@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Register a new user.
+     * Register — selalu assign role 'user'.
      */
     public function register(Request $request)
     {
@@ -20,7 +20,6 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role'     => 'sometimes|string|in:admin,manager,user', // opsional, default: user
         ]);
 
         $user = User::create([
@@ -29,9 +28,7 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        // Assign role via Spatie (default: user)
-        $role = $validated['role'] ?? 'user';
-        $user->assignRole($role);
+        $user->assignRole('user');
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -47,7 +44,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Login user and create token.
+     * Login.
      */
     public function login(Request $request)
     {
@@ -63,10 +60,7 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
-
-        // Hapus token lama (optional, biar tidak numpuk)
         $user->tokens()->delete();
-
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -81,7 +75,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user profile.
+     * Profile.
      */
     public function profile(Request $request)
     {
@@ -92,11 +86,10 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout user (revoke token).
+     * Logout (token aktif).
      */
     public function logout(Request $request)
     {
-        // Hapus hanya token yang sedang dipakai
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -106,7 +99,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout from all devices (revoke all tokens).
+     * Logout semua perangkat.
      */
     public function logoutAll(Request $request)
     {
@@ -119,7 +112,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Format user data with roles & permissions.
+     * Format user data.
      */
     private function formatUser(User $user): array
     {

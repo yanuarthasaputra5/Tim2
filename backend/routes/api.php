@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\CategoryController;
+use App\Http\Controllers\API\ProductController;
+use App\Http\Controllers\API\ProductImageController;
+use App\Http\Controllers\API\ProductVariantController;
 use App\Http\Controllers\API\RolePermissionController;
 use App\Http\Controllers\API\UserController;
 use Illuminate\Support\Facades\Route;
@@ -43,5 +47,42 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Assign role ke user (tetap ada untuk keperluan admin)
         Route::post('/users/{userId}/assign-role',    [RolePermissionController::class, 'assignRole']);
+    });
+
+    // ==================== MODUL PRODUK ====================
+
+    // Baca produk & kategori — butuh permission view-products
+    Route::middleware('permission:view-products')->group(function () {
+        Route::get('/products',        [ProductController::class, 'index']);
+        Route::get('/products/{id}',   [ProductController::class, 'show']);
+
+        Route::get('/categories',      [CategoryController::class, 'index']);
+        Route::get('/categories/{id}', [CategoryController::class, 'show']);
+    });
+
+    // Kelola produk & kategori — butuh permission manage-products
+    Route::middleware('permission:manage-products')->group(function () {
+        // Produk
+        Route::post('/products',        [ProductController::class, 'store']);
+        Route::put('/products/{id}',    [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+        // Asosiasi kategori produk
+        Route::put('/products/{product}/categories', [ProductController::class, 'syncCategories']);
+
+        // Varian produk
+        Route::post('/products/{product}/variants',             [ProductVariantController::class, 'store']);
+        Route::put('/products/{product}/variants/{variant}',    [ProductVariantController::class, 'update']);
+        Route::delete('/products/{product}/variants/{variant}', [ProductVariantController::class, 'destroy']);
+
+        // Gambar produk
+        Route::post('/products/{product}/images',         [ProductImageController::class, 'store']);
+        Route::put('/products/{product}/images/{image}',  [ProductImageController::class, 'update']);
+        Route::delete('/products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
+
+        // Kategori
+        Route::post('/categories',        [CategoryController::class, 'store']);
+        Route::put('/categories/{id}',    [CategoryController::class, 'update']);
+        Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
     });
 });

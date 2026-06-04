@@ -10,23 +10,29 @@ use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
+    /**
+     * Relasi yang selalu disertakan pada respons produk.
+     */
     private array $relations = ['status', 'categories', 'images', 'variants'];
 
+    /**
+     * Daftar produk dengan filter, pencarian, dan paginasi.
+     */
     public function index(Request $request)
     {
         $request->validate([
-            'search' => ['sometimes', 'string', 'max:255'],
+            'search'      => ['sometimes', 'string', 'max:255'],
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
-            'status_id' => ['sometimes', 'integer', 'exists:statuses,id'],
-            'min_price' => ['sometimes', 'numeric', 'min:0'],
-            'max_price' => ['sometimes', 'numeric', 'min:0'],
-            'per_page' => ['sometimes', 'integer', 'between:1,100'],
+            'status_id'   => ['sometimes', 'integer', 'exists:statuses,id'],
+            'min_price'   => ['sometimes', 'numeric', 'min:0'],
+            'max_price'   => ['sometimes', 'numeric', 'min:0'],
+            'per_page'    => ['sometimes', 'integer', 'between:1,100'],
         ], [], [
             'category_id' => 'kategori',
-            'status_id' => 'status',
-            'min_price' => 'harga minimum',
-            'max_price' => 'harga maksimum',
-            'per_page' => 'jumlah per halaman',
+            'status_id'   => 'status',
+            'min_price'   => 'harga minimum',
+            'max_price'   => 'harga maksimum',
+            'per_page'    => 'jumlah per halaman',
         ]);
 
         $query = Product::with($this->relations);
@@ -35,7 +41,7 @@ class ProductController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%");
+                  ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
@@ -64,26 +70,32 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'data' => $products->items(),
+            'data'    => [
+                'data'         => $products->items(),
                 'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
+                'last_page'    => $products->lastPage(),
+                'per_page'     => $products->perPage(),
+                'total'        => $products->total(),
             ],
         ]);
     }
 
+    /**
+     * Detail satu produk.
+     */
     public function show(string $id)
     {
         $product = Product::with($this->relations)->findOrFail($id);
 
         return response()->json([
             'success' => true,
-            'data' => $product,
+            'data'    => $product,
         ]);
     }
 
+    /**
+     * Buat produk baru beserta data turunannya.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate(
@@ -99,25 +111,25 @@ class ProductController extends Controller
             );
 
             $product = Product::create([
-                'name' => $validated['name'],
-                'slug' => $slug,
+                'name'        => $validated['name'],
+                'slug'        => $slug,
                 'description' => $validated['description'] ?? null,
-                'price' => $validated['price'],
-                'stock' => $validated['stock'],
-                'status_id' => $validated['status_id'],
+                'price'       => $validated['price'],
+                'stock'       => $validated['stock'],
+                'status_id'   => $validated['status_id'],
             ]);
 
             if ($request->filled('categories')) {
                 $product->categories()->sync($validated['categories']);
             }
 
-            if (!empty($validated['variants'])) {
+            if (! empty($validated['variants'])) {
                 foreach ($validated['variants'] as $variant) {
                     $product->variants()->create($variant);
                 }
             }
 
-            if (!empty($validated['images'])) {
+            if (! empty($validated['images'])) {
                 $this->createImages($product, $validated['images']);
             }
 
@@ -126,10 +138,13 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $product->load($this->relations),
+            'data'    => $product->load($this->relations),
         ], 201);
     }
 
+    /**
+     * Perbarui produk (partial update).
+     */
     public function update(Request $request, string $id)
     {
         $product = Product::findOrFail($id);
@@ -141,11 +156,7 @@ class ProductController extends Controller
 
         $product = DB::transaction(function () use ($product, $validated, $request) {
             $data = collect($validated)->only([
-                'name',
-                'description',
-                'price',
-                'stock',
-                'status_id',
+                'name', 'description', 'price', 'stock', 'status_id',
             ])->toArray();
 
             // Tentukan slug bila name atau slug berubah.
@@ -159,7 +170,7 @@ class ProductController extends Controller
                 }
             }
 
-            if (!empty($data)) {
+            if (! empty($data)) {
                 $product->update($data);
             }
 
@@ -172,10 +183,13 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $product->load($this->relations),
+            'data'    => $product->load($this->relations),
         ]);
     }
 
+    /**
+     * Hapus produk beserta data turunannya.
+     */
     public function destroy(string $id)
     {
         $product = Product::findOrFail($id);
@@ -193,16 +207,19 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Sinkronkan asosiasi kategori produk.
+     */
     public function syncCategories(Request $request, string $product)
     {
         $product = Product::findOrFail($product);
 
         $validated = $request->validate([
-            'categories' => ['present', 'array'],
+            'categories'   => ['present', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
         ], [
-            'categories.present' => 'Daftar kategori wajib disertakan.',
-            'categories.array' => 'Daftar kategori harus berupa array.',
+            'categories.present'  => 'Daftar kategori wajib disertakan.',
+            'categories.array'    => 'Daftar kategori harus berupa array.',
             'categories.*.exists' => 'Salah satu kategori yang dipilih tidak ditemukan.',
         ]);
 
@@ -210,10 +227,13 @@ class ProductController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $product->load($this->relations),
+            'data'    => $product->load($this->relations),
         ]);
     }
 
+    /**
+     * Tentukan slug unik: pakai slug eksplisit bila ada, jika tidak hasilkan dari name.
+     */
     private function resolveSlug(?string $explicitSlug, string $source, ?int $ignoreId): string
     {
         $base = $explicitSlug !== null && $explicitSlug !== '' ? $explicitSlug : $source;
@@ -221,74 +241,88 @@ class ProductController extends Controller
         return SlugGenerator::generate($base, 'products', $ignoreId, 255);
     }
 
+    /**
+     * Buat gambar produk sambil menjaga hanya satu gambar utama.
+     */
     private function createImages(Product $product, array $images): void
     {
-        foreach ($images as $index => $image) {
+        $primaryAssigned = false;
 
-            $path = $image->store(
-                'products',
-                'public'
-            );
+        foreach ($images as $image) {
+            $isPrimary = (bool) ($image['is_primary'] ?? false);
+
+            if ($isPrimary) {
+                // Nonaktifkan primary lain bila gambar ini jadi utama.
+                $product->images()->update(['is_primary' => false]);
+                $primaryAssigned = true;
+            }
 
             $product->images()->create([
-                'url' => '/storage/' . $path,
-                'is_primary' => $index === 0,
-                'sort_order' => $index,
+                'url'        => $image['url'],
+                'is_primary' => $isPrimary,
+                'sort_order' => $image['sort_order'] ?? 0,
             ]);
         }
     }
 
+    /**
+     * Aturan validasi produk.
+     */
     private function rules(bool $isUpdate = false, ?int $ignoreId = null): array
     {
         $required = $isUpdate ? 'sometimes' : 'required';
 
         return [
-            'name' => [$required, 'string', 'max:255'],
-            'slug' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:/^[a-z0-9\-]+$/'],
-            'description' => ['sometimes', 'nullable', 'string'],
-            'price' => [$required, 'numeric', 'min:0'],
-            'stock' => [$required, 'integer', 'min:0'],
-            'status_id' => [$required, 'integer', 'exists:statuses,id'],
+            'name'                 => [$required, 'string', 'max:255'],
+            'slug'                 => ['sometimes', 'nullable', 'string', 'max:255', 'regex:/^[a-z0-9\-]+$/'],
+            'description'          => ['sometimes', 'nullable', 'string'],
+            'price'                => [$required, 'numeric', 'min:0'],
+            'stock'                => [$required, 'integer', 'min:0'],
+            'status_id'            => [$required, 'integer', 'exists:statuses,id'],
 
-            'categories' => ['sometimes', 'array'],
-            'categories.*' => ['integer', 'exists:categories,id'],
+            'categories'           => ['sometimes', 'array'],
+            'categories.*'         => ['integer', 'exists:categories,id'],
 
-            'variants' => ['sometimes', 'array'],
-            'variants.*.name' => ['required_with:variants', 'string', 'max:255'],
-            'variants.*.price' => ['required_with:variants', 'numeric', 'min:0'],
-            'variants.*.stock' => ['required_with:variants', 'integer', 'min:0'],
+            'variants'             => ['sometimes', 'array'],
+            'variants.*.name'      => ['required_with:variants', 'string', 'max:255'],
+            'variants.*.price'     => ['required_with:variants', 'numeric', 'min:0'],
+            'variants.*.stock'     => ['required_with:variants', 'integer', 'min:0'],
             'variants.*.status_id' => ['required_with:variants', 'integer', 'exists:statuses,id'],
 
-            'images' => ['sometimes', 'array'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'images.*.is_primary' => ['sometimes', 'boolean'],
-            'images.*.sort_order' => ['sometimes', 'integer', 'min:0'],
+            'images'               => ['sometimes', 'array'],
+            'images.*.url'         => ['required_with:images', 'string', 'max:2048'],
+            'images.*.is_primary'  => ['sometimes', 'boolean'],
+            'images.*.sort_order'  => ['sometimes', 'integer', 'min:0'],
         ];
     }
+
+    /**
+     * Pesan validasi dalam Bahasa Indonesia.
+     */
     private function messages(): array
     {
         return [
-            'name.required' => 'Nama produk wajib diisi.',
-            'name.max' => 'Nama produk maksimal 255 karakter.',
-            'slug.regex' => 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.',
-            'price.required' => 'Harga produk wajib diisi.',
-            'price.numeric' => 'Harga harus berupa angka.',
-            'price.min' => 'Harga tidak boleh kurang dari 0.',
-            'stock.required' => 'Stok produk wajib diisi.',
-            'stock.integer' => 'Stok harus berupa bilangan bulat.',
-            'stock.min' => 'Stok tidak boleh kurang dari 0.',
-            'status_id.required' => 'Status produk wajib diisi.',
-            'status_id.exists' => 'Status yang dipilih tidak ditemukan.',
+            'name.required'        => 'Nama produk wajib diisi.',
+            'name.max'             => 'Nama produk maksimal 255 karakter.',
+            'slug.regex'           => 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.',
+            'price.required'       => 'Harga produk wajib diisi.',
+            'price.numeric'        => 'Harga harus berupa angka.',
+            'price.min'            => 'Harga tidak boleh kurang dari 0.',
+            'stock.required'       => 'Stok produk wajib diisi.',
+            'stock.integer'        => 'Stok harus berupa bilangan bulat.',
+            'stock.min'            => 'Stok tidak boleh kurang dari 0.',
+            'status_id.required'   => 'Status produk wajib diisi.',
+            'status_id.exists'     => 'Status yang dipilih tidak ditemukan.',
 
-            'categories.*.exists' => 'Salah satu kategori yang dipilih tidak ditemukan.',
+            'categories.*.exists'  => 'Salah satu kategori yang dipilih tidak ditemukan.',
 
-            'variants.*.name.required_with' => 'Nama varian wajib diisi.',
-            'variants.*.price.required_with' => 'Harga varian wajib diisi.',
-            'variants.*.price.min' => 'Harga varian tidak boleh kurang dari 0.',
-            'variants.*.stock.required_with' => 'Stok varian wajib diisi.',
-            'variants.*.stock.min' => 'Stok varian tidak boleh kurang dari 0.',
+            'variants.*.name.required_with'      => 'Nama varian wajib diisi.',
+            'variants.*.price.required_with'     => 'Harga varian wajib diisi.',
+            'variants.*.price.min'               => 'Harga varian tidak boleh kurang dari 0.',
+            'variants.*.stock.required_with'     => 'Stok varian wajib diisi.',
+            'variants.*.stock.min'               => 'Stok varian tidak boleh kurang dari 0.',
             'variants.*.status_id.required_with' => 'Status varian wajib diisi.',
-            'variants.*.status_id.exists' => 'Status varian yang dipilih tidak ditemukan.',
+            'variants.*.status_id.exists'        => 'Status varian yang dipilih tidak ditemukan.',
 
             'images.*.url.required_with' => 'URL gambar wajib diisi.',
         ];

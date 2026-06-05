@@ -10,19 +10,17 @@ use Illuminate\Http\Request;
 class CategoryController extends Controller
 {
     /**
-     * Daftar kategori.
+     * Daftar kategori — hanya Aktif.
      */
     public function index(Request $request)
     {
         $request->validate([
-            'search'    => ['sometimes', 'string', 'max:100'],
-            'status_id' => ['sometimes', 'integer', 'exists:statuses,id'],
-            'per_page'  => ['sometimes', 'integer', 'between:1,100'],
-        ], [
-            'status_id.exists' => 'Status yang dipilih tidak ditemukan.',
+            'search'   => ['sometimes', 'string', 'max:100'],
+            'per_page' => ['sometimes', 'integer', 'between:1,100'],
         ]);
 
-        $query = Category::with('status');
+        $query = Category::with('status')
+            ->where('status_id', 4); // hanya Aktif
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -30,10 +28,6 @@ class CategoryController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('slug', 'like', "%{$search}%");
             });
-        }
-
-        if ($request->filled('status_id')) {
-            $query->where('status_id', $request->input('status_id'));
         }
 
         $perPage = (int) $request->input('per_page', 10);
@@ -94,7 +88,9 @@ class CategoryController extends Controller
         ], 201);
     }
 
-
+    /**
+     * Perbarui kategori.
+     */
     public function update(Request $request, string $id)
     {
         $category = Category::findOrFail($id);
@@ -125,6 +121,9 @@ class CategoryController extends Controller
         ]);
     }
 
+    /**
+     * Hapus kategori.
+     */
     public function destroy(string $id)
     {
         $category = Category::findOrFail($id);
@@ -144,8 +143,10 @@ class CategoryController extends Controller
             'name.required' => 'Nama kategori wajib diisi.',
             'name.max'      => 'Nama kategori maksimal 100 karakter.',
             'name.unique'   => 'Nama kategori sudah digunakan, gunakan nama lain.',
+
             'slug.regex' => 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.',
             'slug.max'   => 'Slug kategori maksimal 100 karakter.',
+
             'status_id.required' => 'Status kategori wajib diisi.',
             'status_id.exists'   => 'Status yang dipilih tidak ditemukan.',
         ];

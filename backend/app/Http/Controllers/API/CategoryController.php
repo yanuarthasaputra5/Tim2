@@ -71,13 +71,12 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'      => ['required', 'string', 'max:100'],
-            'slug'      => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-z0-9\-]+$/'],
+            'name'      => ['required', 'string', 'max:100', 'unique:categories,name'],
             'status_id' => ['required', 'integer', 'exists:statuses,id'],
         ], $this->messages());
 
         $slug = SlugGenerator::generate(
-            $validated['slug'] ?? $validated['name'],
+            $validated['name'],
             'categories',
             null,
             100
@@ -95,28 +94,25 @@ class CategoryController extends Controller
         ], 201);
     }
 
-    /**
-     * Perbarui kategori (partial update).
-     */
+
     public function update(Request $request, string $id)
     {
         $category = Category::findOrFail($id);
 
         $validated = $request->validate([
-            'name'      => ['sometimes', 'string', 'max:100'],
-            'slug'      => ['sometimes', 'nullable', 'string', 'max:100', 'regex:/^[a-z0-9\-]+$/'],
+            'name'      => ['sometimes', 'string', 'max:100', 'unique:categories,name,' . $category->id],
             'status_id' => ['sometimes', 'integer', 'exists:statuses,id'],
         ], $this->messages());
 
         $data = collect($validated)->only(['name', 'status_id'])->toArray();
 
-        if ($request->exists('slug') || $request->exists('name')) {
-            $explicit = $validated['slug'] ?? null;
-            $source   = $explicit ?? ($validated['name'] ?? $category->name);
-
-            if ($explicit !== null || ($request->exists('name') && $source !== $category->name)) {
-                $data['slug'] = SlugGenerator::generate($source, 'categories', $category->id, 100);
-            }
+        if ($request->exists('name') && $validated['name'] !== $category->name) {
+            $data['slug'] = SlugGenerator::generate(
+                $validated['name'],
+                'categories',
+                $category->id,
+                100
+            );
         }
 
         if (! empty($data)) {
@@ -129,9 +125,6 @@ class CategoryController extends Controller
         ]);
     }
 
-    /**
-     * Hapus kategori.
-     */
     public function destroy(string $id)
     {
         $category = Category::findOrFail($id);
@@ -148,10 +141,11 @@ class CategoryController extends Controller
     private function messages(): array
     {
         return [
-            'name.required'      => 'Nama kategori wajib diisi.',
-            'name.max'           => 'Nama kategori maksimal 100 karakter.',
-            'slug.regex'         => 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.',
-            'slug.max'           => 'Slug kategori maksimal 100 karakter.',
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.max'      => 'Nama kategori maksimal 100 karakter.',
+            'name.unique'   => 'Nama kategori sudah digunakan, gunakan nama lain.',
+            'slug.regex' => 'Slug hanya boleh berisi huruf kecil, angka, dan tanda hubung.',
+            'slug.max'   => 'Slug kategori maksimal 100 karakter.',
             'status_id.required' => 'Status kategori wajib diisi.',
             'status_id.exists'   => 'Status yang dipilih tidak ditemukan.',
         ];

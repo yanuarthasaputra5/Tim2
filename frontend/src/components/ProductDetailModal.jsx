@@ -20,36 +20,38 @@ export default function ProductDetailModal({
   onClose,
 }) {
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedVariant, setSelectedVariant] =
-    useState(product?.variants?.[0] || null);
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
 
   if (!product) return null;
 
   const images = product.images || [];
   const variants = product.variants || [];
 
-  const imageUrl = (url) => {
-    if (!url)
-      return "https://via.placeholder.com/500x500?text=No+Image";
+  // Ambil ukuran unik dari nama variant (format: "S - Lengan pendek")
+  const sizes = [
+    ...new Set(
+      variants
+        .map((v) => v.name?.split(" - ")[0])
+        .filter(Boolean)
+    ),
+  ];
 
-    return `http://localhost:8000${url}`;
-  };
+  // Filter tipe berdasarkan ukuran yang dipilih
+  const typesForSize = selectedSize
+    ? variants.filter((v) =>
+        v.name?.startsWith(selectedSize + " - ")
+      )
+    : [];
 
-  const nextImage = () => {
-    if (images.length <= 1) return;
-
-    setActiveImage((prev) =>
-      prev === images.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const prevImage = () => {
-    if (images.length <= 1) return;
-
-    setActiveImage((prev) =>
-      prev === 0 ? images.length - 1 : prev - 1
-    );
-  };
+  // Cari variant yang cocok dengan kombinasi ukuran + tipe
+  const selectedVariant =
+    selectedSize && selectedType
+      ? variants.find(
+          (v) =>
+            v.name === `${selectedSize} - ${selectedType}`
+        ) || null
+      : null;
 
   const currentPrice = selectedVariant
     ? selectedVariant.price
@@ -57,7 +59,27 @@ export default function ProductDetailModal({
 
   const currentStock = selectedVariant
     ? selectedVariant.stock
-    : product.stock;
+    : null; // null = belum pilih variant lengkap
+
+  const imageUrl = (url) => {
+    if (!url)
+      return "https://via.placeholder.com/500x500?text=No+Image";
+    return `http://localhost:8000${url}`;
+  };
+
+  const nextImage = () => {
+    if (images.length <= 1) return;
+    setActiveImage((prev) =>
+      prev === images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    if (images.length <= 1) return;
+    setActiveImage((prev) =>
+      prev === 0 ? images.length - 1 : prev - 1
+    );
+  };
 
   return (
     <div
@@ -82,8 +104,7 @@ export default function ProductDetailModal({
           background: "#121318",
           borderRadius: "20px",
           overflow: "hidden",
-          border:
-            "1px solid rgba(255,255,255,.08)",
+          border: "1px solid rgba(255,255,255,.08)",
           display: "flex",
           position: "relative",
         }}
@@ -119,9 +140,7 @@ export default function ProductDetailModal({
           <img
             src={
               images.length
-                ? imageUrl(
-                    images[activeImage]?.url
-                  )
+                ? imageUrl(images[activeImage]?.url)
                 : "https://via.placeholder.com/500"
             }
             alt={product.name}
@@ -140,14 +159,12 @@ export default function ProductDetailModal({
                   position: "absolute",
                   left: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   width: 40,
                   height: 40,
                   borderRadius: "50%",
                   border: "none",
-                  background:
-                    "rgba(0,0,0,.5)",
+                  background: "rgba(0,0,0,.5)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -161,14 +178,12 @@ export default function ProductDetailModal({
                   position: "absolute",
                   right: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   width: 40,
                   height: 40,
                   borderRadius: "50%",
                   border: "none",
-                  background:
-                    "rgba(0,0,0,.5)",
+                  background: "rgba(0,0,0,.5)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -196,9 +211,7 @@ export default function ProductDetailModal({
                   key={img.id}
                   src={imageUrl(img.url)}
                   alt=""
-                  onClick={() =>
-                    setActiveImage(index)
-                  }
+                  onClick={() => setActiveImage(index)}
                   style={{
                     width: 65,
                     height: 65,
@@ -274,16 +287,19 @@ export default function ProductDetailModal({
             {product.description}
           </p>
 
-          {/* VARIANT */}
+          {/* PILIH UKURAN */}
           {variants.length > 0 && (
             <>
               <h4
                 style={{
-                  color: "#fff",
-                  marginBottom: 12,
+                  color: "#94a3b8",
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
                 }}
               >
-                Pilih Varian
+                Pilih Ukuran Kaos
               </h4>
 
               <div
@@ -294,95 +310,146 @@ export default function ProductDetailModal({
                   marginBottom: 24,
                 }}
               >
-                {variants.map((variant) => (
+                {sizes.map((size) => (
                   <button
-                    key={variant.id}
-                    onClick={() =>
-                      setSelectedVariant(
-                        variant
-                      )
-                    }
+                    key={size}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      setSelectedType(null); // reset tipe saat ukuran berubah
+                    }}
                     style={{
-                      padding:
-                        "10px 14px",
+                      width: 48,
+                      height: 48,
                       borderRadius: 10,
                       border:
-                        selectedVariant?.id ===
-                        variant.id
+                        selectedSize === size
                           ? "1px solid #f59e0b"
                           : "1px solid rgba(255,255,255,.1)",
                       background:
-                        selectedVariant?.id ===
-                        variant.id
+                        selectedSize === size
                           ? "rgba(245,158,11,.15)"
                           : "#1e1f24",
                       color: "#fff",
+                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    <div>
-                      {variant.name}
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#f59e0b",
-                      }}
-                    >
-                      {formatRupiah(
-                        variant.price
-                      )}
-                    </div>
+                    {size}
                   </button>
                 ))}
               </div>
+
+              {/* PILIH TIPE — muncul setelah ukuran dipilih */}
+              {selectedSize && typesForSize.length > 0 && (
+                <>
+                  <h4
+                    style={{
+                      color: "#94a3b8",
+                      fontSize: 11,
+                      letterSpacing: 1,
+                      marginBottom: 10,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Spesifikasi Kaos
+                  </h4>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      marginBottom: 24,
+                    }}
+                  >
+                    {typesForSize.map((variant) => {
+                      const tipe = variant.name?.split(" - ")[1];
+                      const isSelected = selectedType === tipe;
+                      return (
+                        <button
+                          key={variant.id}
+                          onClick={() => setSelectedType(tipe)}
+                          style={{
+                            padding: "10px 16px",
+                            borderRadius: 10,
+                            border: isSelected
+                              ? "1px solid #f59e0b"
+                              : "1px solid rgba(255,255,255,.1)",
+                            background: isSelected
+                              ? "rgba(245,158,11,.15)"
+                              : "#1e1f24",
+                            color: "#fff",
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <div>{tipe}</div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#f59e0b",
+                            }}
+                          >
+                            {formatRupiah(variant.price)}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </>
           )}
 
-          <div
-            style={{
-              marginBottom: 24,
-            }}
-          >
-            <span
-              style={{
-                padding:
-                  "6px 12px",
-                borderRadius: 20,
-                background:
-                  currentStock > 0
-                    ? "rgba(74,222,128,.1)"
-                    : "rgba(239,68,68,.1)",
-                color:
-                  currentStock > 0
-                    ? "#4ade80"
-                    : "#ef4444",
-                fontWeight: 600,
-              }}
-            >
-              Stok : {currentStock}
-            </span>
+          {/* STOK */}
+          <div style={{ marginBottom: 24 }}>
+            {currentStock === null ? (
+              <span
+                style={{
+                  color: "#64748b",
+                  fontSize: 13,
+                }}
+              >
+                Pilih ukuran dan tipe untuk melihat stok
+              </span>
+            ) : (
+              <span
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  background:
+                    currentStock > 0
+                      ? "rgba(74,222,128,.1)"
+                      : "rgba(239,68,68,.1)",
+                  color:
+                    currentStock > 0 ? "#4ade80" : "#ef4444",
+                  fontWeight: 600,
+                }}
+              >
+                Stok: {currentStock}
+              </span>
+            )}
           </div>
 
+          {/* TOMBOL KERANJANG */}
           <button
-            disabled={currentStock <= 0}
+            disabled={!selectedVariant || currentStock <= 0}
             style={{
               width: "100%",
               padding: "14px",
               borderRadius: 12,
               border: "none",
               background:
-                currentStock > 0
+                selectedVariant && currentStock > 0
                   ? "#f59e0b"
                   : "#334155",
               color:
-                currentStock > 0
+                selectedVariant && currentStock > 0
                   ? "#000"
                   : "#94a3b8",
               fontWeight: 700,
               cursor:
-                currentStock > 0
+                selectedVariant && currentStock > 0
                   ? "pointer"
                   : "not-allowed",
               display: "flex",
@@ -392,7 +459,9 @@ export default function ProductDetailModal({
             }}
           >
             <ShoppingCart size={16} />
-            {currentStock > 0
+            {!selectedVariant
+              ? "Pilih Varian Terlebih Dahulu"
+              : currentStock > 0
               ? "Tambah ke Keranjang"
               : "Stok Habis"}
           </button>

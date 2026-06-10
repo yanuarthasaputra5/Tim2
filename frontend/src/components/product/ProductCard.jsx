@@ -73,7 +73,6 @@ function ImageSlider({ images, aspectRatio = '4/3', maxHeight }) {
         </div>
       )}
 
-      {/* Tombol prev/next — hanya muncul jika lebih dari 1 foto */}
       {images.length > 1 && (
         <>
           <button
@@ -106,7 +105,6 @@ function ImageSlider({ images, aspectRatio = '4/3', maxHeight }) {
             <ChevronRight size={18} />
           </button>
 
-          {/* Dot indicator */}
           <div
             style={{
               position: 'absolute', bottom: '8px', width: '100%',
@@ -133,8 +131,32 @@ function ImageSlider({ images, aspectRatio = '4/3', maxHeight }) {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 function ProductModal({ product, onClose }) {
-  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? 'L');
   const images = getImages(product);
+  const variants = product.variants || [];
+
+  // Ambil ukuran unik dari nama variant (format: "S - Lengan pendek")
+  const sizes = [
+    ...new Set(
+      variants.map((v) => v.name?.split(' - ')[0]).filter(Boolean)
+    ),
+  ];
+
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
+
+  // Filter tipe berdasarkan ukuran yang dipilih
+  const typesForSize = selectedSize
+    ? variants.filter((v) => v.name?.startsWith(selectedSize + ' - '))
+    : [];
+
+  // Variant yang cocok dengan kombinasi ukuran + tipe
+  const selectedVariant =
+    selectedSize && selectedType
+      ? variants.find((v) => v.name === `${selectedSize} - ${selectedType}`) || null
+      : null;
+
+  const currentPrice = selectedVariant ? selectedVariant.price : product.price;
+  const currentStock = selectedVariant ? selectedVariant.stock : null;
 
   return (
     <div
@@ -174,7 +196,7 @@ function ProductModal({ product, onClose }) {
           <X size={18} />
         </button>
 
-        {/* Gambar — pakai ImageSlider */}
+        {/* Gambar */}
         <div style={{ flex: '0 0 45%', maxWidth: '45%' }}>
           <ImageSlider images={images} maxHeight="100%" aspectRatio={undefined} />
         </div>
@@ -197,7 +219,7 @@ function ProductModal({ product, onClose }) {
           </h2>
 
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#f59e0b', marginBottom: '12px' }}>
-            {formatRupiah(product.price)}
+            {formatRupiah(currentPrice)}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
@@ -216,70 +238,112 @@ function ProductModal({ product, onClose }) {
             {product.description}
           </p>
 
-          <div style={{ marginBottom: '24px' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', color: '#64748b', marginBottom: '10px' }}>
-              PILIH UKURAN KAOS:
-            </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {(product.sizes || []).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  style={{
-                    width: '44px', height: '44px',
-                    borderRadius: '10px', border: '1px solid',
-                    borderColor: selectedSize === size ? '#f59e0b' : 'rgba(255,255,255,0.12)',
-                    background: selectedSize === size ? 'rgba(245,158,11,0.15)' : 'transparent',
-                    color: selectedSize === size ? '#f59e0b' : '#94a3b8',
-                    fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {size}
-                </button>
-              ))}
+          {/* PILIH UKURAN */}
+          {sizes.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', color: '#64748b', marginBottom: '10px' }}>
+                PILIH UKURAN KAOS:
+              </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      setSelectedType(null); // reset tipe saat ukuran berubah
+                    }}
+                    style={{
+                      width: '44px', height: '44px',
+                      borderRadius: '10px', border: '1px solid',
+                      borderColor: selectedSize === size ? '#f59e0b' : 'rgba(255,255,255,0.12)',
+                      background: selectedSize === size ? 'rgba(245,158,11,0.15)' : 'transparent',
+                      color: selectedSize === size ? '#f59e0b' : '#94a3b8',
+                      fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div style={{ marginBottom: '28px' }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', color: '#64748b', marginBottom: '10px' }}>
-              SPESIFIKASI KAOS:
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(product.specs || []).map((spec, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#f59e0b', fontSize: '14px' }}>✓</span>
-                  <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{spec}</span>
-                </div>
-              ))}
+          {/* PILIH TIPE — muncul setelah ukuran dipilih */}
+          {selectedSize && typesForSize.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', color: '#64748b', marginBottom: '10px' }}>
+                SPESIFIKASI KAOS:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {typesForSize.map((variant) => {
+                  const tipe = variant.name?.split(' - ')[1];
+                  const isSelected = selectedType === tipe;
+                  return (
+                    <button
+                      key={variant.id}
+                      onClick={() => setSelectedType(tipe)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '10px', border: '1px solid',
+                        borderColor: isSelected ? '#f59e0b' : 'rgba(255,255,255,0.1)',
+                        background: isSelected ? 'rgba(245,158,11,0.15)' : 'transparent',
+                        color: '#fff', cursor: 'pointer', textAlign: 'left',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#f59e0b', fontSize: '14px' }}>✓</span>
+                        <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{tipe}</span>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 600 }}>
+                        {formatRupiah(variant.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
+          {/* STOK */}
           <div style={{ marginBottom: '20px' }}>
-            <span style={{
-              fontSize: '12px', fontWeight: 600,
-              color: product.stock > 5 ? '#4ade80' : '#fbbf24',
-              background: product.stock > 5 ? 'rgba(74,222,128,0.1)' : 'rgba(251,191,36,0.1)',
-              padding: '4px 12px', borderRadius: '20px',
-            }}>
-              Stok: {product.stock}
-            </span>
+            {currentStock === null ? (
+              <span style={{ fontSize: '13px', color: '#64748b' }}>
+                Pilih ukuran dan tipe untuk melihat stok
+              </span>
+            ) : (
+              <span style={{
+                fontSize: '12px', fontWeight: 600,
+                color: currentStock > 5 ? '#4ade80' : currentStock > 0 ? '#fbbf24' : '#f87171',
+                background: currentStock > 5 ? 'rgba(74,222,128,0.1)' : currentStock > 0 ? 'rgba(251,191,36,0.1)' : 'rgba(248,113,113,0.1)',
+                padding: '4px 12px', borderRadius: '20px',
+              }}>
+                Stok: {currentStock}
+              </span>
+            )}
           </div>
 
+          {/* TOMBOL KERANJANG */}
           <button
-            disabled={product.stock === 0}
+            disabled={!selectedVariant || currentStock <= 0}
             style={{
               width: '100%', padding: '14px',
               borderRadius: '12px', border: 'none',
-              background: product.stock === 0 ? 'rgba(255,255,255,0.05)' : '#f59e0b',
-              color: product.stock === 0 ? '#475569' : '#000',
+              background: selectedVariant && currentStock > 0 ? '#f59e0b' : 'rgba(255,255,255,0.05)',
+              color: selectedVariant && currentStock > 0 ? '#000' : '#475569',
               fontSize: '14px', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
+              cursor: selectedVariant && currentStock > 0 ? 'pointer' : 'not-allowed',
             }}
           >
             <ShoppingCart size={16} />
-            {product.stock === 0 ? 'Stok Habis' : 'Tambah ke Keranjang'}
+            {!selectedVariant
+              ? 'Pilih Varian Terlebih Dahulu'
+              : currentStock > 0
+              ? 'Tambah ke Keranjang'
+              : 'Stok Habis'}
           </button>
         </div>
       </div>

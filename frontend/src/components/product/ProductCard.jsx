@@ -196,8 +196,27 @@ function ProductModal({ product, onClose }) {
             {product.name}
           </h2>
 
-          <div style={{ fontSize: '22px', fontWeight: 800, color: '#f59e0b', marginBottom: '12px' }}>
-            {formatRupiah(product.price)}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            {product.active_promo ? (
+              <>
+                <span style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b' }}>
+                  {formatRupiah(product.discounted_price)}
+                </span>
+                <span style={{ fontSize: '16px', color: '#64748b', textDecoration: 'line-through', fontWeight: 400 }}>
+                  {formatRupiah(product.price)}
+                </span>
+                <span style={{
+                  fontSize: '11px', fontWeight: 700, color: '#ffffff',
+                  background: '#ef4444', padding: '2px 8px', borderRadius: '4px'
+                }}>
+                  {product.active_promo.name}
+                </span>
+              </>
+            ) : (
+              <span style={{ fontSize: '22px', fontWeight: 800, color: '#f59e0b' }}>
+                {formatRupiah(product.price)}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
@@ -330,6 +349,20 @@ export default function ProductCard({ product }) {
             {product.category}
           </div>
 
+          {product.active_promo && (
+            <div style={{
+              position: 'absolute', top: '10px', right: '10px', zIndex: 3,
+              background: '#ef4444', border: '1px solid #ef4444',
+              borderRadius: '20px', padding: '3px 10px',
+              fontSize: '11px', fontWeight: 800, color: '#ffffff',
+              boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+            }}>
+              {product.active_promo.type === 'percent'
+                ? `${Number(product.active_promo.value)}% OFF`
+                : 'DISKON'}
+            </div>
+          )}
+
           {/* Overlay stok habis */}
           {isOutOfStock && (
             <div style={{
@@ -363,10 +396,21 @@ export default function ProductCard({ product }) {
           }}>
             {product.description}
           </p>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-            <span style={{ fontSize: '16px', fontWeight: 800, color: '#f59e0b' }}>
-              {formatRupiah(product.price)}
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', width: '100%' }}>
+            {product.active_promo ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#f59e0b' }}>
+                  {formatRupiah(product.discounted_price)}
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748b', textDecoration: 'line-through', fontWeight: 500 }}>
+                  {formatRupiah(product.price)}
+                </span>
+              </div>
+            ) : (
+              <span style={{ fontSize: '16px', fontWeight: 800, color: '#f59e0b' }}>
+                {formatRupiah(product.price)}
+              </span>
+            )}
             <span style={{
               fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px',
               color: product.stock > 5 ? '#4ade80' : product.stock > 0 ? '#fbbf24' : '#f87171',

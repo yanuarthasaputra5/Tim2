@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard,Shirt ,  User, Shield, Key, Users, X, StretchHorizontal, } from 'lucide-react';
+import { LayoutDashboard, Shirt, User, Shield, Key, Users, X, StretchHorizontal, Ticket } from 'lucide-react';
 
 const menuItems = [
   { label: 'Dashboard',              icon: LayoutDashboard,  to: '/admin/dashboard' },
   { label: 'Manage Product',         icon: Shirt,            to: '/admin/product' },
   { label: 'Manage Categories ',     icon: StretchHorizontal,to: '/admin/categories' },
+  { label: 'Manage Promo',           icon: Ticket,           to: '/admin/promo' },
   { label: 'Profile',                icon: User,             to: '/admin/profile' },
   { label: 'Roles',                  icon: Shield,           to: '/admin/roles' },
   { label: 'Permissions',            icon: Key,              to: '/admin/permissions' },

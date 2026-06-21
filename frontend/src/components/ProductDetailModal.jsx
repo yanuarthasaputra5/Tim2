@@ -51,9 +51,15 @@ export default function ProductDetailModal({
     );
   };
 
-  const currentPrice = selectedVariant
+  const hasPromo = !!product.active_promo;
+
+  const originalPrice = selectedVariant
     ? selectedVariant.price
     : product.price;
+
+  const currentPrice = selectedVariant
+    ? (selectedVariant.discounted_price || selectedVariant.price)
+    : (product.discounted_price || product.price);
 
   const currentStock = selectedVariant
     ? selectedVariant.stock
@@ -242,9 +248,28 @@ export default function ProductDetailModal({
               fontWeight: 700,
               color: "#f59e0b",
               marginBottom: 12,
+              display: "flex",
+              alignItems: "baseline",
+              gap: "10px",
+              flexWrap: "wrap"
             }}
           >
-            {formatRupiah(currentPrice)}
+            {hasPromo ? (
+              <>
+                <span>{formatRupiah(currentPrice)}</span>
+                <span style={{ fontSize: 16, color: "#64748b", textDecoration: "line-through", fontWeight: 400 }}>
+                  {formatRupiah(originalPrice)}
+                </span>
+                <span style={{
+                  fontSize: "12px", fontWeight: 700, color: "#ffffff",
+                  background: "#ef4444", padding: "2px 8px", borderRadius: "4px"
+                }}>
+                  {product.active_promo.name}
+                </span>
+              </>
+            ) : (
+              formatRupiah(currentPrice)
+            )}
           </div>
 
           <div
@@ -328,10 +353,20 @@ export default function ProductDetailModal({
                       style={{
                         fontSize: 12,
                         color: "#f59e0b",
+                        display: "flex",
+                        gap: "6px",
+                        alignItems: "center"
                       }}
                     >
-                      {formatRupiah(
-                        variant.price
+                      {hasPromo ? (
+                        <>
+                          <span>{formatRupiah(variant.discounted_price || variant.price)}</span>
+                          <span style={{ textDecoration: "line-through", color: "#64748b", fontSize: "11px" }}>
+                            {formatRupiah(variant.price)}
+                          </span>
+                        </>
+                      ) : (
+                        formatRupiah(variant.price)
                       )}
                     </div>
                   </button>

@@ -18,6 +18,7 @@ import CustomerHomePage from '../pages/customer/CustomerHomePage';
 
 import ProdukPage from '../pages/admin/product/ProdukPage';
 import CategoryPage from '../pages/admin/categories/CategoryPage';
+import PromoPage from '../pages/admin/promo/PromoPage';
 
 // Product Pages
 import ProductListPage from '../pages/product/ProductListPage';
@@ -144,6 +145,11 @@ export default function AppRoutes() {
             <Route
               path="/admin/categories"
               element={<CategoryPage />}
+            />
+
+            <Route
+              path="/admin/promo"
+              element={<PromoPage />}
             />
 
           </Route>

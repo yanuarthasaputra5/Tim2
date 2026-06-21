@@ -13,7 +13,7 @@ class ProductController extends Controller
     /**
      * Relasi yang selalu disertakan pada respons produk.
      */
-    private array $relations = ['status', 'categories', 'images', 'variants'];
+    private array $relations = ['status', 'categories', 'images', 'variants', 'promos'];
 
     /**
      * Daftar produk dengan filter, pencarian, dan paginasi.

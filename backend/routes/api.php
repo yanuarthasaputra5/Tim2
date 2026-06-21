@@ -5,6 +5,7 @@ use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\API\ProductController;
 use App\Http\Controllers\API\ProductImageController;
 use App\Http\Controllers\API\ProductVariantController;
+use App\Http\Controllers\API\PromoController;
 use App\Http\Controllers\API\RolePermissionController;
 use App\Http\Controllers\API\UserController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     });
+
 
     // ==================== ADMIN ONLY ====================
 
@@ -76,6 +78,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/products/{product}/images', [ProductImageController::class, 'store']);
         Route::put('/products/{product}/images/{image}', [ProductImageController::class, 'update']);
         Route::delete('/products/{product}/images/{image}', [ProductImageController::class, 'destroy']);
+
+        // ==================== MANAGE PROMOS ====================
+
+        Route::get('/promos', [PromoController::class, 'index']);
+        Route::get('/promos/{id}', [PromoController::class, 'show']);
+        Route::post('/promos', [PromoController::class, 'store']);
+        Route::put('/promos/{id}', [PromoController::class, 'update']);
+        Route::delete('/promos/{id}', [PromoController::class, 'destroy']);
     });
 
     // ==================== MANAGE CATEGORIES ====================

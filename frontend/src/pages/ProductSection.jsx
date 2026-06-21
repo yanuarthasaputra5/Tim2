@@ -4,6 +4,14 @@ import kaos2 from '../assets/kaos2.jpeg';
 import kaos3 from '../assets/kaos3.jpeg';
 import kaos4 from '../assets/kaos4.jpeg';
 
+function formatRupiah(number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(number);
+}
+
 function ProductSection({ 
   products, 
   searchQuery, 
@@ -111,6 +119,19 @@ function ProductSection({
                 </div>
 
                 <div className="product-img-wrapper" style={{ height: '220px', background: '#191a20', overflow: 'hidden', position: 'relative' }}>
+                  {prod.active_promo && (
+                    <div style={{
+                      position: 'absolute', top: '10px', right: '10px', zIndex: 3,
+                      background: '#ef4444', border: '1px solid #ef4444',
+                      borderRadius: '20px', padding: '3px 10px',
+                      fontSize: '11px', fontWeight: 800, color: '#ffffff',
+                      boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+                    }}>
+                      {prod.active_promo.type === 'percent'
+                        ? `${Number(prod.active_promo.value)}% OFF`
+                        : 'DISKON'}
+                    </div>
+                  )}
                   <img 
                     src={getProductImage(prod.id)} 
                     alt={prod.name} 
@@ -144,9 +165,20 @@ function ProductSection({
                   </div>
 
                   <div className="product-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="product-price" style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>
-                      Rp {prod.price.toLocaleString('id-ID')}
-                    </span>
+                    {prod.active_promo ? (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+                        <span className="product-price" style={{ fontSize: '16px', fontWeight: '800', color: '#f59e0b' }}>
+                          {formatRupiah(prod.discounted_price)}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#64748b', textDecoration: 'line-through', fontWeight: 500 }}>
+                          {formatRupiah(prod.price)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="product-price" style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>
+                        Rp {prod.price.toLocaleString('id-ID')}
+                      </span>
+                    )}
                     
                     {/* Detail Button with Custom Cart SVG inside */}
                     <button 

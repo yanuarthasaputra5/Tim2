@@ -1,32 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HeroSection from '../HeroSection';
 import AboutSection from '../AboutSection';
 import ProductSection from '../ProductSection';
 import ProductDetailModal from '../../components/ProductDetailModal';
-
-const productsData = [
-  { id: 1, name: 'Artikel 1', price: 150000, category: 'Kaos', tag: 'Best Seller',
-    description: 'Kaos potongan oversize premium berkelas distro dengan bahan katun tebal lembut khas SIBER.',
-    rating: 5, reviews: 15, badgeText: 'HOT ITEM',
-    features: ['Bahan 100% Premium Cotton Combed 24s', 'Sablon Plastisol Premium Halus', 'Potongan Oversized Mewah & Unisex'] },
-  { id: 2, name: 'Artikel 2', price: 150000, category: 'Kaos', tag: 'Best Seller',
-    description: 'Kaos potongan oversize premium berkelas distro dengan bahan katun tebal lembut khas SIBER.',
-    rating: 5, reviews: 34, badgeText: 'HOT ITEM',
-    features: ['Bahan 100% Premium Cotton Combed 24s', 'Sablon Plastisol Premium Halus', 'Potongan Oversized Mewah & Unisex'] },
-  { id: 3, name: 'Artikel 3', price: 150000, category: 'Kaos', tag: 'Best Seller',
-    description: 'Kaos potongan oversize premium berkelas distro dengan bahan katun tebal lembut khas SIBER.',
-    rating: 5, reviews: 4, badgeText: 'HOT ITEM',
-    features: ['Bahan 100% Premium Cotton Combed 24s', 'Sablon Plastisol Premium Halus', 'Potongan Oversized Mewah & Unisex'] },
-  { id: 4, name: 'Artikel 4', price: 150000, category: 'Kaos', tag: 'Best Seller',
-    description: 'Kaos potongan oversize premium berkelas distro dengan bahan katun tebal lembut khas SIBER.',
-    rating: 5, reviews: 21, badgeText: 'HOT ITEM',
-    features: ['Bahan 100% Premium Cotton Combed 24s', 'Sablon Plastisol Premium Halus', 'Potongan Oversized Mewah & Unisex'] },
-];
+import { getProducts } from '../../services/productService';
 
 export default function CustomerHomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Semua');
   const [activeQuickView, setActiveQuickView] = useState(null);
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await getProducts({ per_page: 100 });
+      const raw = Array.isArray(res.data?.data?.data)
+        ? res.data.data.data
+        : [];
+
+      const formatted = raw.map(product => ({
+        ...product,
+        category: product.categories?.[0]?.name || 'Produk',
+        badgeText: product.badge || (product.active_promo ? 'DISKON' : 'SIBER'),
+        rating: 5,
+        reviews: 0,
+      }));
+
+      setProducts(formatted);
+    } catch {
+      setProducts([]);
+    }
+  };
 
   const scrollToId = (id) => {
     const element = document.getElementById(id);
@@ -37,6 +45,14 @@ export default function CustomerHomePage() {
     <>
       <HeroSection scrollToId={scrollToId} />
       <AboutSection />
+      <ProductSection
+        products={products}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
+        onQuickView={(product) => setActiveQuickView(product)}
+      />
       {activeQuickView && (
         <ProductDetailModal
           product={activeQuickView}

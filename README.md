@@ -1,93 +1,299 @@
-# Sibermerch
+# PRD – Integrasi Fitur Promo (Frontend)
 
+## Objective
 
+Tambahkan fitur Promo ke aplikasi dengan cara mengintegrasikan frontend terhadap backend yang sudah tersedia.
 
-## Getting started
+Project saat ini sudah memiliki:
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+* Authentication
+* Dashboard Admin
+* Product Management
+* Product Catalog User
+* API Service Existing
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+AI TIDAK BOLEH langsung membuat asumsi endpoint atau struktur data promo.
 
-## Add your files
+AI WAJIB melakukan audit backend terlebih dahulu untuk memastikan fitur promo sudah tersedia dan dapat digunakan.
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+Jika backend promo sudah lengkap, lanjutkan implementasi frontend tanpa mengubah backend.
 
+---
+
+# Tahap 1 – Audit Backend (Wajib)
+
+Sebelum membuat kode frontend:
+
+## Analisis Struktur Backend
+
+Periksa:
+
+* Route Promo
+* Controller Promo
+* Service Promo
+* DTO Request
+* DTO Response
+* Validation
+* Database Schema
+* Relasi Product ↔ Promo
+
+Cari dan dokumentasikan:
+
+### Endpoint yang tersedia
+
+Contoh:
+
+* GET /promo
+* GET /promo/:id
+* POST /promo
+* PATCH /promo/:id
+* DELETE /promo/:id
+
+atau endpoint lain yang ditemukan.
+
+### Struktur Response
+
+Identifikasi response API sebenarnya.
+
+Contoh:
+
+```json
+{
+  "id": 1,
+  "productId": 5,
+  "discountPercentage": 20,
+  "startDate": "...",
+  "endDate": "...",
+  "isActive": true
+}
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/ipl-group1/Sibermerch.git
-git branch -M main
-git push -uf origin main
-```
 
-## Integrate with your tools
+JANGAN mengasumsikan struktur data.
 
-* [Set up project integrations](https://gitlab.com/ipl-group1/Sibermerch/-/settings/integrations)
+Gunakan struktur yang benar-benar ada pada backend.
 
-## Collaborate with your team
+---
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## Validasi Backend
 
-## Test and Deploy
+Evaluasi apakah backend sudah memenuhi kebutuhan frontend:
 
-Use the built-in continuous integration in GitLab.
+* CRUD Promo tersedia
+* Relasi Product tersedia
+* Response sudah lengkap
+* Data promo dapat ditampilkan ke user
+* Status promo tersedia
+* Harga promo dapat dihitung atau sudah disediakan backend
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Jika ada kekurangan kecil yang menghalangi frontend:
 
-***
+Jelaskan kekurangan tersebut terlebih dahulu sebelum melakukan perubahan.
 
-# Editing this README
+---
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+# Tahap 2 – Analisis Frontend Existing (Wajib)
 
-## Suggestions for a good README
+Sebelum implementasi:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Analisis seluruh struktur frontend.
 
-## Name
-Choose a self-explaining name for your project.
+Identifikasi:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+* Framework
+* Routing
+* Layout Admin
+* Sidebar Admin
+* State Management
+* Service Layer/API
+* Reusable Components
+* Product Pages
+* Existing CRUD Pattern
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Tujuan:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Seluruh implementasi promo harus mengikuti pola yang sudah digunakan project.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+---
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+# Aturan Implementasi
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Penting
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+JANGAN:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+* Membuat struktur folder baru tanpa alasan.
+* Membuat design system baru.
+* Membuat styling yang berbeda dari halaman lain.
+* Membuat API service baru jika sudah ada pattern service.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+HARUS:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+* Mengikuti struktur project yang ada.
+* Menggunakan komponen existing.
+* Menggunakan styling existing.
+* Menggunakan pattern CRUD existing.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Frontend promo harus terasa seperti fitur bawaan project, bukan fitur tambahan dari developer lain.
 
-## License
-For open source projects, say how it is licensed.
+---
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+# Fitur Admin
+
+## Menu Promo
+
+Tambahkan menu:
+
+Promo
+
+ke sidebar admin menggunakan pola menu yang sudah ada.
+
+Posisi menyesuaikan struktur menu saat ini.
+
+---
+
+## Halaman Promo
+
+Buat halaman daftar promo menggunakan komponen tabel yang sudah dipakai pada halaman lain.
+
+Kolom mengikuti data yang tersedia dari backend.
+
+Contoh:
+
+* Produk
+* Diskon
+* Harga Promo
+* Tanggal Mulai
+* Tanggal Berakhir
+* Status
+* Aksi
+
+Jika backend memiliki field berbeda, sesuaikan.
+
+---
+
+## Tambah Promo
+
+Gunakan form style yang sama dengan:
+
+* Tambah Produk
+* Edit Produk
+
+atau form admin lain yang sudah tersedia.
+
+Field mengikuti endpoint backend.
+
+Jangan membuat field yang tidak ada pada backend.
+
+---
+
+## Edit Promo
+
+Gunakan pola edit yang sama dengan CRUD lain.
+
+---
+
+## Hapus Promo
+
+Gunakan dialog konfirmasi yang sudah digunakan pada project.
+
+---
+
+# Fitur User
+
+Jika backend mengembalikan informasi promo pada produk:
+
+Implementasikan:
+
+## Product Card
+
+* Badge Promo
+* Persentase Diskon
+* Harga Asli Dicoret
+* Harga Promo
+
+Mengikuti design card produk yang sudah ada.
+
+---
+
+## Detail Produk
+
+Tampilkan informasi promo menggunakan komponen UI yang sudah digunakan pada halaman detail produk.
+
+---
+
+## Section Produk Promo
+
+Jika API memungkinkan:
+
+Tambahkan section:
+
+"Produk Promo"
+
+pada halaman produk.
+
+Gunakan card produk yang sudah ada.
+
+---
+
+# UI Requirement
+
+AI wajib mempelajari UI yang sudah ada terlebih dahulu.
+
+Jangan membuat desain baru.
+
+Harus:
+
+* Warna mengikuti tema aplikasi.
+* Spacing mengikuti halaman lain.
+* Typography mengikuti halaman lain.
+* Table mengikuti halaman admin lain.
+* Form mengikuti halaman admin lain.
+* Modal mengikuti modal existing.
+
+Targetnya adalah pengguna tidak bisa membedakan apakah fitur promo dibuat belakangan atau sejak awal project dibuat.
+
+---
+
+# Deliverables
+
+Sebelum coding tampilkan:
+
+1. Hasil audit backend promo.
+2. Endpoint yang ditemukan.
+3. Struktur response yang ditemukan.
+4. Kekurangan backend (jika ada).
+5. Struktur frontend yang akan digunakan.
+6. File yang akan dibuat.
+7. File yang akan dimodifikasi.
+
+Setelah itu baru lakukan implementasi.
+
+---
+
+# Acceptance Criteria
+
+## Backend
+
+* Endpoint promo berhasil ditemukan.
+* Struktur data tervalidasi.
+* Tidak ada asumsi endpoint.
+
+## Admin
+
+* Menu Promo muncul.
+* CRUD Promo berfungsi.
+* Terintegrasi dengan backend existing.
+
+## User
+
+* Produk promo tampil dengan benar.
+* Harga promo tampil dengan benar.
+* Badge promo tampil dengan benar.
+
+## Code Quality
+
+* Mengikuti struktur project existing.
+* Tidak ada duplicate component.
+* Tidak ada duplicate styling.
+* Reuse component dan service yang sudah ada.
+* Konsisten dengan arsitektur project.

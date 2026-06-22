@@ -53,13 +53,21 @@ export default function ProductDetailModal({
         ) || null
       : null;
 
+  // Harga & stok aktif: ikuti variant yang dipilih, atau produk dasar
+  // jika produk ini memang tidak punya variant sama sekali.
   const currentPrice = selectedVariant
     ? selectedVariant.price
     : product.price;
 
   const currentStock = selectedVariant
     ? selectedVariant.stock
-    : null; // null = belum pilih variant lengkap
+    : variants.length > 0
+    ? null // belum pilih variant lengkap
+    : product.stock;
+
+  // NOTE: sesuaikan dua field ini dengan bentuk data promo dari API kamu.
+  const hasPromo = Boolean(product.active_promo);
+  const originalPrice = product.original_price ?? product.price;
 
   const imageUrl = (url) => {
     if (!url)
@@ -255,9 +263,41 @@ export default function ProductDetailModal({
               fontWeight: 700,
               color: "#f59e0b",
               marginBottom: 12,
+              display: "flex",
+              alignItems: "baseline",
+              gap: "10px",
+              flexWrap: "wrap",
             }}
           >
-            {formatRupiah(currentPrice)}
+            {hasPromo ? (
+              <>
+                <span>{formatRupiah(currentPrice)}</span>
+                <span
+                  style={{
+                    fontSize: 16,
+                    color: "#64748b",
+                    textDecoration: "line-through",
+                    fontWeight: 400,
+                  }}
+                >
+                  {formatRupiah(originalPrice)}
+                </span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                    background: "#ef4444",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  {product.active_promo.name}
+                </span>
+              </>
+            ) : (
+              formatRupiah(currentPrice)
+            )}
           </div>
 
           <div
@@ -338,66 +378,68 @@ export default function ProductDetailModal({
                   </button>
                 ))}
               </div>
+            </>
+          )}
 
-              {/* PILIH TIPE — muncul setelah ukuran dipilih */}
-              {selectedSize && typesForSize.length > 0 && (
-                <>
-                  <h4
-                    style={{
-                      color: "#94a3b8",
-                      fontSize: 11,
-                      letterSpacing: 1,
-                      marginBottom: 10,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Spesifikasi Kaos
-                  </h4>
+          {/* PILIH TIPE */}
+          {selectedSize && typesForSize.length > 0 && (
+            <>
+              <h4
+                style={{
+                  color: "#94a3b8",
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                }}
+              >
+                Pilih Tipe
+              </h4>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 10,
-                      marginBottom: 24,
-                    }}
-                  >
-                    {typesForSize.map((variant) => {
-                      const tipe = variant.name?.split(" - ")[1];
-                      const isSelected = selectedType === tipe;
-                      return (
-                        <button
-                          key={variant.id}
-                          onClick={() => setSelectedType(tipe)}
-                          style={{
-                            padding: "10px 16px",
-                            borderRadius: 10,
-                            border: isSelected
-                              ? "1px solid #f59e0b"
-                              : "1px solid rgba(255,255,255,.1)",
-                            background: isSelected
-                              ? "rgba(245,158,11,.15)"
-                              : "#1e1f24",
-                            color: "#fff",
-                            cursor: "pointer",
-                            textAlign: "left",
-                          }}
-                        >
-                          <div>{tipe}</div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: "#f59e0b",
-                            }}
-                          >
-                            {formatRupiah(variant.price)}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginBottom: 24,
+                }}
+              >
+                {typesForSize.map((variant) => {
+                  const type = variant.name?.split(" - ")[1];
+                  return (
+                    <button
+                      key={variant.id}
+                      onClick={() => setSelectedType(type)}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border:
+                          selectedType === type
+                            ? "1px solid #f59e0b"
+                            : "1px solid rgba(255,255,255,.1)",
+                        background:
+                          selectedType === type
+                            ? "rgba(245,158,11,.15)"
+                            : "#1e1f24",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div>{type}</div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#f59e0b",
+                        }}
+                      >
+                        {formatRupiah(variant.price)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </>
           )}
 
@@ -433,23 +475,30 @@ export default function ProductDetailModal({
 
           {/* TOMBOL KERANJANG */}
           <button
-            disabled={!selectedVariant || currentStock <= 0}
+            disabled={
+              (variants.length > 0 && !selectedVariant) ||
+              !currentStock ||
+              currentStock <= 0
+            }
             style={{
               width: "100%",
               padding: "14px",
               borderRadius: 12,
               border: "none",
               background:
-                selectedVariant && currentStock > 0
+                (variants.length === 0 || selectedVariant) &&
+                currentStock > 0
                   ? "#f59e0b"
                   : "#334155",
               color:
-                selectedVariant && currentStock > 0
+                (variants.length === 0 || selectedVariant) &&
+                currentStock > 0
                   ? "#000"
                   : "#94a3b8",
               fontWeight: 700,
               cursor:
-                selectedVariant && currentStock > 0
+                (variants.length === 0 || selectedVariant) &&
+                currentStock > 0
                   ? "pointer"
                   : "not-allowed",
               display: "flex",
@@ -459,7 +508,7 @@ export default function ProductDetailModal({
             }}
           >
             <ShoppingCart size={16} />
-            {!selectedVariant
+            {variants.length > 0 && !selectedVariant
               ? "Pilih Varian Terlebih Dahulu"
               : currentStock > 0
               ? "Tambah ke Keranjang"

@@ -37,6 +37,10 @@ class ProductController extends Controller
 
         $query = Product::with($this->relations);
 
+        $query->whereHas('categories', function ($q) {
+            $q->where('categories.status_id', 1);
+        });
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
@@ -48,7 +52,8 @@ class ProductController extends Controller
         if ($request->filled('category_id')) {
             $categoryId = $request->input('category_id');
             $query->whereHas('categories', function ($q) use ($categoryId) {
-                $q->where('categories.id', $categoryId);
+                $q->where('categories.id', $categoryId)
+                  ->where('categories.status_id', 1);
             });
         }
 
@@ -65,7 +70,6 @@ class ProductController extends Controller
         }
 
         $perPage = (int) $request->input('per_page', 10);
-
         $products = $query->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
@@ -129,8 +133,8 @@ class ProductController extends Controller
                 }
             }
 
-            if (! empty($validated['images'])) {
-                $this->createImages($product, $validated['images']);
+            if ($request->hasFile('images')) {
+                $this->createImages($product, $request->file('images'));
             }
 
             return $product;
@@ -155,16 +159,16 @@ class ProductController extends Controller
         );
 
         $product = DB::transaction(function () use ($product, $validated, $request) {
+
+            // ── Update field utama produk ──────────────────────────────────
             $data = collect($validated)->only([
                 'name', 'description', 'price', 'stock', 'status_id',
             ])->toArray();
 
-            // Tentukan slug bila name atau slug berubah.
             if ($request->exists('slug') || $request->exists('name')) {
-                $source = $validated['slug'] ?? ($validated['name'] ?? $product->name);
+                $source   = $validated['slug'] ?? ($validated['name'] ?? $product->name);
                 $explicit = $validated['slug'] ?? null;
 
-                // Hanya regenerasi bila ada perubahan relevan.
                 if ($explicit !== null || ($request->exists('name') && $source !== $product->name)) {
                     $data['slug'] = $this->resolveSlug($explicit, $source, $product->id);
                 }
@@ -174,8 +178,73 @@ class ProductController extends Controller
                 $product->update($data);
             }
 
+            // ── Update kategori ────────────────────────────────────────────
             if ($request->exists('categories')) {
                 $product->categories()->sync($validated['categories'] ?? []);
+            }
+
+            // ── Update variant ─────────────────────────────────────────────
+            // FIX: variant sebelumnya tidak diproses sama sekali saat update.
+            // Sekarang: jika request membawa variants, lakukan upsert berdasarkan id.
+            // - Variant yang punya id → update stok, harga, status
+            // - Variant tanpa id      → buat baru
+            // - Variant lama yang tidak dikirim ulang → hapus
+            if ($request->exists('variants')) {
+                $incomingVariants = $validated['variants'] ?? [];
+
+                // Kumpulkan id variant yang dikirim (untuk deteksi yang dihapus)
+                $incomingIds = collect($incomingVariants)
+                    ->pluck('id')
+                    ->filter()
+                    ->values()
+                    ->toArray();
+
+                // Hapus variant yang tidak ada di request (dihapus oleh admin)
+                $product->variants()
+                    ->whereNotIn('id', $incomingIds)
+                    ->delete();
+
+                foreach ($incomingVariants as $variantData) {
+                    if (! empty($variantData['id'])) {
+                        // Update variant yang sudah ada
+                        $product->variants()
+                            ->where('id', $variantData['id'])
+                            ->update([
+                                'name'      => $variantData['name'],
+                                'price'     => $variantData['price'],
+                                'stock'     => $variantData['stock'],
+                                'status_id' => $variantData['status_id'],
+                            ]);
+                    } else {
+                        // Buat variant baru
+                        $product->variants()->create([
+                            'name'      => $variantData['name'],
+                            'price'     => $variantData['price'],
+                            'stock'     => $variantData['stock'],
+                            'status_id' => $variantData['status_id'],
+                        ]);
+                    }
+                }
+            }
+
+            // ── Update gambar ──────────────────────────────────────────────
+            // Hapus gambar lama yang tidak dipertahankan admin
+            if ($request->exists('existing_image_ids')) {
+                $keepIds = array_filter((array) $request->input('existing_image_ids'));
+                $product->images()
+                    ->whereNotIn('id', $keepIds)
+                    ->each(function ($img) {
+                        // Hapus file fisik dari storage jika perlu
+                        // Storage::disk('public')->delete(ltrim($img->url, '/storage/'));
+                        $img->delete();
+                    });
+            }
+
+            // Tambah gambar baru jika ada
+            if ($request->hasFile('images')) {
+                // Cek apakah masih ada gambar yang tersisa (untuk menentukan is_primary)
+                $hasExisting = $product->images()->exists();
+                $this->createImages($product, $request->file('images'), !$hasExisting);
             }
 
             return $product;
@@ -232,7 +301,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Tentukan slug unik: pakai slug eksplisit bila ada, jika tidak hasilkan dari name.
+     * Tentukan slug unik.
      */
     private function resolveSlug(?string $explicitSlug, string $source, ?int $ignoreId): string
     {
@@ -243,23 +312,22 @@ class ProductController extends Controller
 
     /**
      * Buat gambar produk sambil menjaga hanya satu gambar utama.
+     * $resetPrimary = true berarti gambar pertama yang baru akan jadi primary.
      */
-    private function createImages(Product $product, array $images): void
-{
-    foreach ($images as $index => $image) {
+    private function createImages(Product $product, array $images, bool $resetPrimary = false): void
+    {
+        $startOrder = $product->images()->max('sort_order') + 1;
 
-        $path = $image->store(
-            'products',
-            'public'
-        );
+        foreach ($images as $index => $image) {
+            $path = $image->store('products', 'public');
 
-        $product->images()->create([
-            'url' => '/storage/' . $path,
-            'is_primary' => $index === 0,
-            'sort_order' => $index,
-        ]);
+            $product->images()->create([
+                'url'        => '/storage/' . $path,
+                'is_primary' => $resetPrimary && $index === 0,
+                'sort_order' => $startOrder + $index,
+            ]);
+        }
     }
-}
 
     /**
      * Aturan validasi produk.
@@ -280,6 +348,7 @@ class ProductController extends Controller
             'categories.*'         => ['integer', 'exists:categories,id'],
 
             'variants'             => ['sometimes', 'array'],
+            'variants.*.id'        => ['sometimes', 'nullable', 'integer', 'exists:product_variants,id'],
             'variants.*.name'      => ['required_with:variants', 'string', 'max:255'],
             'variants.*.price'     => ['required_with:variants', 'numeric', 'min:0'],
             'variants.*.stock'     => ['required_with:variants', 'integer', 'min:0'],
@@ -287,8 +356,9 @@ class ProductController extends Controller
 
             'images'               => ['sometimes', 'array'],
             'images.*'             => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'images.*.is_primary'  => ['sometimes', 'boolean'],
-            'images.*.sort_order'  => ['sometimes', 'integer', 'min:0'],
+
+            'existing_image_ids'   => ['sometimes', 'array'],
+            'existing_image_ids.*' => ['nullable', 'integer'],
         ];
     }
 
@@ -312,6 +382,7 @@ class ProductController extends Controller
 
             'categories.*.exists'  => 'Salah satu kategori yang dipilih tidak ditemukan.',
 
+            'variants.*.id.exists'               => 'Variant tidak ditemukan.',
             'variants.*.name.required_with'      => 'Nama varian wajib diisi.',
             'variants.*.price.required_with'     => 'Harga varian wajib diisi.',
             'variants.*.price.min'               => 'Harga varian tidak boleh kurang dari 0.',
@@ -320,7 +391,9 @@ class ProductController extends Controller
             'variants.*.status_id.required_with' => 'Status varian wajib diisi.',
             'variants.*.status_id.exists'        => 'Status varian yang dipilih tidak ditemukan.',
 
-            'images.*.url.required_with' => 'URL gambar wajib diisi.',
+            'images.*.image' => 'File harus berupa gambar.',
+            'images.*.mimes' => 'Format gambar harus JPG, PNG, atau WEBP.',
+            'images.*.max'   => 'Ukuran gambar maksimal 2MB.',
         ];
     }
 }

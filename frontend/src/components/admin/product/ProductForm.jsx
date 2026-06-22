@@ -101,7 +101,7 @@ const TagInput = ({ label, tags, onChange }) => {
 };
 
 // --- VariantBuilder ---
-const VariantBuilder = ({ variants, onChange, initialVariants }) => {
+const VariantBuilder = ({ variants, onChange, initialVariants, totalStock }) => {
   const parseAttr = (idx) => {
     if (!initialVariants?.length) return null;
     const vals = [...new Set(initialVariants.map(v => v.name?.split(' - ')[idx]).filter(Boolean))];
@@ -125,12 +125,28 @@ const VariantBuilder = ({ variants, onChange, initialVariants }) => {
   };
 
   const updateVariant = (index, field, value) => {
+    if (field === 'stock') {
+      const newVal = Number(value) || 0;
+      // Hitung total stok variant lain (selain index ini)
+      const otherTotal = variants.reduce((sum, v, i) => {
+        return i !== index ? sum + (Number(v.stock) || 0) : sum;
+      }, 0);
+      // Blok jika total akan melebihi stok keseluruhan
+      const maxStock = Number(totalStock) || 0;
+      if (maxStock > 0 && otherTotal + newVal > maxStock) return;
+    }
     const updated = [...variants];
     updated[index] = { ...updated[index], [field]: value };
     onChange(updated);
   };
 
   const removeVariant = (index) => onChange(variants.filter((_, i) => i !== index));
+
+  // Hitung total stok yang sudah terpakai di variant
+  const usedStock   = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  const maxStock    = Number(totalStock) || 0;
+  const sisaStock   = maxStock > 0 ? maxStock - usedStock : null;
+  const isOverLimit = maxStock > 0 && usedStock > maxStock;
 
   return (
     <div style={{ marginBottom: '20px' }}>
@@ -145,7 +161,7 @@ const VariantBuilder = ({ variants, onChange, initialVariants }) => {
         marginBottom: '12px',
       }}>
         <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>Definisikan atribut</p>
-        <TagInput label="Ukuran"       tags={sizes}   onChange={setSizes}   />
+        <TagInput label="Ukuran"        tags={sizes}   onChange={setSizes}   />
         <TagInput label="Jenis Variasi" tags={sleeves} onChange={setSleeves} />
         <button
           type="button"
@@ -166,44 +182,134 @@ const VariantBuilder = ({ variants, onChange, initialVariants }) => {
       </div>
 
       {variants.length > 0 && (
-        <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', overflow: 'hidden' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 130px 100px 40px',
-            gap: '8px',
-            padding: '10px 14px',
-            background: 'rgba(255,255,255,0.03)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            {['Nama variant', 'Harga (Rp)', 'Stok', ''].map((h, i) => (
-              <span key={i} style={{ fontSize: '12px', color: '#64748b', textAlign: i > 0 ? 'right' : 'left' }}>{h}</span>
-            ))}
-          </div>
-          {variants.map((v, i) => (
-            <div key={i} style={{
+        <>
+          {/* Info sisa stok */}
+          {maxStock > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              marginBottom: '10px',
+              background: isOverLimit
+                ? 'rgba(239,68,68,0.08)'
+                : sisaStock === 0
+                ? 'rgba(251,191,36,0.08)'
+                : 'rgba(16,185,129,0.08)',
+              border: `1px solid ${isOverLimit
+                ? 'rgba(239,68,68,0.25)'
+                : sisaStock === 0
+                ? 'rgba(251,191,36,0.25)'
+                : 'rgba(16,185,129,0.25)'}`,
+            }}>
+              <span style={{
+                fontSize: '13px',
+                color: isOverLimit ? '#ef4444' : sisaStock === 0 ? '#fbbf24' : '#10b981',
+                fontWeight: 500,
+              }}>
+                {isOverLimit
+                  ? `⚠️ Melebihi stok! Total variant: ${usedStock} dari ${maxStock}`
+                  : sisaStock === 0
+                  ? `✓ Stok terdistribusi penuh (${usedStock}/${maxStock})`
+                  : `Sisa stok belum terdistribusi: ${sisaStock} dari ${maxStock}`}
+              </span>
+              <span style={{
+                fontSize: '12px', fontWeight: 700,
+                color: isOverLimit ? '#ef4444' : '#94a3b8',
+              }}>
+                {usedStock} / {maxStock}
+              </span>
+            </div>
+          )}
+
+          <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', overflow: 'hidden' }}>
+            <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 130px 100px 40px',
               gap: '8px',
-              padding: '8px 14px',
-              alignItems: 'center',
-              borderBottom: i < variants.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              padding: '10px 14px',
+              background: 'rgba(255,255,255,0.03)',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
-              <span style={{ fontSize: '13px', color: '#e2e8f0' }}>{v.name}</span>
-              <input type="number" placeholder="0" value={v.price} min="0"
-                style={{ ...inputStyle, padding: '6px 10px', textAlign: 'right' }}
-                onChange={e => updateVariant(i, 'price', e.target.value)} />
-              <input type="number" placeholder="0" value={v.stock} min="0"
-                style={{ ...inputStyle, padding: '6px 10px', textAlign: 'right' }}
-                onChange={e => updateVariant(i, 'stock', e.target.value)} />
-              <button type="button" onClick={() => removeVariant(i)}
-                style={{
-                  background: 'none', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: '6px', color: '#ef4444', cursor: 'pointer',
-                  padding: '6px', fontSize: '14px', lineHeight: 1,
-                }}>✕</button>
+              {['Nama variant', 'Harga (Rp)', 'Stok', ''].map((h, i) => (
+                <span key={i} style={{ fontSize: '12px', color: '#64748b', textAlign: i > 0 ? 'right' : 'left' }}>{h}</span>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {variants.map((v, i) => {
+              // Hitung stok maksimal yang bisa diisi untuk variant ini
+              const otherTotal = variants.reduce((sum, vv, ii) => {
+                return ii !== i ? sum + (Number(vv.stock) || 0) : sum;
+              }, 0);
+              const maxForThis = maxStock > 0 ? maxStock - otherTotal : Infinity;
+              const isThisOver = Number(v.stock) > maxForThis;
+
+              return (
+                <div key={i} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 130px 100px 40px',
+                  gap: '8px',
+                  padding: '8px 14px',
+                  alignItems: 'center',
+                  borderBottom: i < variants.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  background: isThisOver ? 'rgba(239,68,68,0.04)' : 'transparent',
+                }}>
+                  <span style={{ fontSize: '13px', color: '#e2e8f0' }}>{v.name}</span>
+                  <input
+                    type="number" placeholder="0" value={v.price} min="0"
+                    style={{ ...inputStyle, padding: '6px 10px', textAlign: 'right' }}
+                    onChange={e => updateVariant(i, 'price', e.target.value)}
+                  />
+                  <input
+                    type="number" placeholder="0" value={v.stock} min="0"
+                    // max dibatasi agar tidak bisa diketik melebihi sisa stok
+                    max={maxStock > 0 ? maxForThis : undefined}
+                    style={{
+                      ...inputStyle,
+                      padding: '6px 10px',
+                      textAlign: 'right',
+                      borderColor: isThisOver ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)',
+                    }}
+                    onChange={e => updateVariant(i, 'stock', e.target.value)}
+                  />
+                  <button type="button" onClick={() => removeVariant(i)}
+                    style={{
+                      background: 'none', border: '1px solid rgba(239,68,68,0.2)',
+                      borderRadius: '6px', color: '#ef4444', cursor: 'pointer',
+                      padding: '6px', fontSize: '14px', lineHeight: 1,
+                    }}>✕</button>
+                </div>
+              );
+            })}
+
+            {/* Baris total */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 130px 100px 40px',
+              gap: '8px',
+              padding: '10px 14px',
+              background: isOverLimit
+                ? 'rgba(239,68,68,0.06)'
+                : 'rgba(245,158,11,0.05)',
+              borderTop: `1px solid ${isOverLimit ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.15)'}`,
+            }}>
+              <span style={{ fontSize: '12px', color: isOverLimit ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                Total stok variant
+              </span>
+              <span />
+              <span style={{
+                fontSize: '13px',
+                color: isOverLimit ? '#ef4444' : '#f59e0b',
+                fontWeight: 700,
+                textAlign: 'right',
+              }}>
+                {usedStock}{maxStock > 0 ? ` / ${maxStock}` : ''}
+              </span>
+              <span />
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -288,7 +394,7 @@ const ImageUploader = ({ images, existingImages, onChange, onRemoveExisting }) =
 };
 
 // ─────────────────────────────────────────────────────────────
-// ProductForm — FIXED: product id + category id
+// ProductForm
 // ─────────────────────────────────────────────────────────────
 const ProductForm = ({ product, onSubmit, categories = [] }) => {
   const [form, setForm]                     = useState(empty);
@@ -302,12 +408,9 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
         stock:       product.stock       || '',
         description: product.description || '',
         status_id:   product.status_id ?? product.status?.id ?? 1,
-
-        // FIX 1: normalisasi categories — support object {id, name} maupun angka langsung
         categories: Array.isArray(product.categories)
           ? product.categories.map(c => (typeof c === 'object' && c !== null ? c.id : c))
           : [],
-
         variants: Array.isArray(product.variants) ? product.variants : [],
         images:   [],
       });
@@ -321,12 +424,19 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validasi: total stok variant tidak boleh melebihi stok keseluruhan
+    if (form.variants.length > 0) {
+      const usedStock = form.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      const maxStock  = Number(form.stock) || 0;
+      if (usedStock > maxStock) {
+        alert(`Total stok variant (${usedStock}) melebihi stok keseluruhan (${maxStock}). Harap sesuaikan stok variant.`);
+        return;
+      }
+    }
+
     const fd = new FormData();
 
-    // FIX 2: sertakan product id saat mode edit agar backend tahu record mana yang diupdate
-    if (product?.id) {
-      fd.append('id', product.id);
-    }
+    if (product?.id) fd.append('id', product.id);
 
     fd.append('name',        form.name);
     fd.append('description', form.description || '');
@@ -334,23 +444,19 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
     fd.append('stock',       Number(form.stock));
     fd.append('status_id',   Number(form.status_id));
 
-    // FIX 3: kirim semua category id; jika kosong tetap kirim array kosong agar backend bisa clear
     if (form.categories.length > 0) {
       form.categories.forEach(id => fd.append('categories[]', id));
     } else {
-      fd.append('categories[]', ''); // sinyal "kosongkan kategori"
+      fd.append('categories[]', '');
     }
 
     form.images.forEach(file => fd.append('images[]', file));
-
-    // FIX 4: kirim id gambar yang masih dipertahankan (bukan yang dihapus user)
     existingImages.forEach(img => {
       const id = img?.id ?? img;
       if (id) fd.append('existing_image_ids[]', id);
     });
 
     form.variants.forEach((v, index) => {
-      // FIX 5: sertakan id variant jika sudah ada (mode edit), supaya backend bisa update bukan insert baru
       if (v.id) fd.append(`variants[${index}][id]`, v.id);
       fd.append(`variants[${index}][name]`,      v.name);
       fd.append(`variants[${index}][price]`,     Number(v.price));
@@ -369,7 +475,6 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
   const focus = (e) => (e.target.style.borderColor = 'rgba(245,158,11,0.5)');
   const blur  = (e) => (e.target.style.borderColor = 'rgba(255,255,255,0.08)');
 
-  // Nilai kategori yang sedang dipilih (ambil id pertama, karena single-select)
   const selectedCategoryId = form.categories[0] ?? '';
 
   return (
@@ -402,10 +507,17 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
 
         {/* Stok + Status */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-          <Field label="Stok yang disediakan">
-            <input type="number" placeholder="Jumlah stok" value={form.stock} required min="0"
+          <Field label="Stok Keseluruhan">
+            <input
+              type="number" placeholder="Contoh: 110" value={form.stock} required min="0"
               style={inputStyle} onFocus={focus} onBlur={blur}
-              onChange={e => setForm(p => ({ ...p, stock: e.target.value }))} />
+              onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
+            />
+            {form.variants.length > 0 && (
+              <p style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', marginBottom: 0 }}>
+                Stok ini jadi batas maksimal distribusi ke semua variant di bawah.
+              </p>
+            )}
           </Field>
           <Field label="Status">
             <select value={form.status_id} required style={{ ...inputStyle, cursor: 'pointer' }}
@@ -426,7 +538,6 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
               onBlur={blur}
               onChange={e => setForm(p => ({
                 ...p,
-                // FIX 6: simpan sebagai Number agar cocok dengan id dari API
                 categories: e.target.value ? [Number(e.target.value)] : [],
               }))}
             >
@@ -461,11 +572,12 @@ const ProductForm = ({ product, onSubmit, categories = [] }) => {
           onRemoveExisting={idx => setExistingImages(prev => prev.filter((_, i) => i !== idx))}
         />
 
-        {/* Variants */}
+        {/* Variants — kirim totalStock agar variant tahu batas maksimalnya */}
         <VariantBuilder
           variants={form.variants}
           onChange={variants => setForm(p => ({ ...p, variants }))}
           initialVariants={product?.variants ?? []}
+          totalStock={form.stock}
         />
 
         {/* Tombol */}

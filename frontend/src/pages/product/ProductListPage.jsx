@@ -2,43 +2,48 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import ProductCard from "../../components/product/ProductCard";
 import { getProducts } from "../../services/productService";
+import { getCategories } from "../../services/categoryService";
 
 export default function ProductListPage() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Semua");
+  const [products, setProducts]           = useState([]);
+  const [categories, setCategories]       = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [activeCategory, setActiveCategory] = useState(""); // "" = Semua
 
   useEffect(() => {
+    fetchCategories();
     fetchProducts();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await getCategories({ per_page: 100 });
+      const data = res.data?.data?.data ?? res.data?.data ?? [];
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      setCategories([]);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
       const res = await getProducts();
-
       const rawProducts = Array.isArray(res.data?.data?.data)
         ? res.data.data.data
         : [];
 
       const formattedProducts = rawProducts.map((product) => ({
         ...product,
-
-        // gambar utama
         image:
           product.images?.length > 0
             ? `http://localhost:8000${product.images[0].url}`
             : null,
-
-        // semua gambar
         gallery:
           product.images?.map((img) => ({
             ...img,
             fullUrl: `http://localhost:8000${img.url}`,
           })) || [],
-
-        // ukuran dari variant
         sizes: [
           ...new Set(
             (product.variants || []).map((variant) =>
@@ -46,14 +51,8 @@ export default function ProductListPage() {
             )
           ),
         ],
-
-        // spesifikasi / variant
-        specs:
-          product.variants?.map((variant) => variant.name) || [],
-
-        category:
-          product.categories?.[0]?.name || "Produk",
-
+        specs: product.variants?.map((variant) => variant.name) || [],
+        category: product.categories?.[0]?.name || "Produk",
         rating: 5,
         reviews: 0,
       }));
@@ -67,24 +66,15 @@ export default function ProductListPage() {
     }
   };
 
-  const categories = [
-    "Semua",
-    ...new Set(
-      products.flatMap((product) =>
-        (product.categories || []).map((category) => category.name)
-      )
-    ),
-  ];
-
   const filteredProducts = products.filter((product) => {
     const matchSearch = product.name
       ?.toLowerCase()
       .includes(search.toLowerCase());
 
     const matchCategory =
-      activeCategory === "Semua" ||
+      activeCategory === "" ||
       (product.categories || []).some(
-        (category) => category.name === activeCategory
+        (c) => String(c.id) === String(activeCategory)
       );
 
     return matchSearch && matchCategory;
@@ -92,84 +82,43 @@ export default function ProductListPage() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "#08090c",
-          color: "#ffffff",
-        }}
-      >
+      <div style={{
+        minHeight: "100vh", display: "flex",
+        justifyContent: "center", alignItems: "center",
+        background: "#08090c", color: "#ffffff",
+      }}>
         Loading...
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#08090c",
-        padding: "40px 24px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
+    <div style={{ minHeight: "100vh", background: "#08090c", padding: "40px 24px" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+
+        {/* Header */}
         <div style={{ marginBottom: "32px" }}>
-          <h1
-            style={{
-              margin: "0 0 6px",
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#ffffff",
-            }}
-          >
+          <h1 style={{ margin: "0 0 6px", fontSize: "28px", fontWeight: 800, color: "#ffffff" }}>
             Semua Produk
           </h1>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "14px",
-              color: "#64748b",
-            }}
-          >
+          <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
             {filteredProducts.length} produk tersedia
           </p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "12px",
-            marginBottom: "32px",
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              flex: 1,
-              minWidth: "250px",
-            }}
-          >
+        {/* Search + Filter */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "32px" }}>
+
+          {/* Search */}
+          <div style={{ position: "relative", flex: 1, minWidth: "250px" }}>
             <Search
               size={15}
               style={{
-                position: "absolute",
-                left: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
+                position: "absolute", left: "12px",
+                top: "50%", transform: "translateY(-50%)",
                 color: "#64748b",
               }}
             />
-
             <input
               type="text"
               placeholder="Cari produk..."
@@ -183,73 +132,73 @@ export default function ProductListPage() {
                 borderRadius: "10px",
                 color: "#ffffff",
                 outline: "none",
+                boxSizing: "border-box",
               }}
             />
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "8px",
-            }}
-          >
-            {categories.map((category) => (
+          {/* Dropdown kategori + tombol reset */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <select
+              value={activeCategory}
+              onChange={(e) => setActiveCategory(e.target.value)}
+              style={{
+                padding: "10px 14px",
+                background: "#121318",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "10px",
+                color: activeCategory === "" ? "#64748b" : "#f59e0b",
+                fontSize: "14px",
+                cursor: "pointer",
+                outline: "none",
+                minWidth: "180px",
+              }}
+            >
+              <option value="">Semua Kategori</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={String(cat.id)}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+
+            {activeCategory !== "" && (
               <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
+                onClick={() => setActiveCategory("")}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: "20px",
-                  border: "1px solid",
-                  borderColor:
-                    activeCategory === category
-                      ? "#f59e0b"
-                      : "rgba(255,255,255,0.1)",
-                  background:
-                    activeCategory === category
-                      ? "rgba(245,158,11,0.15)"
-                      : "transparent",
-                  color:
-                    activeCategory === category
-                      ? "#f59e0b"
-                      : "#94a3b8",
+                  padding: "10px 12px",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  borderRadius: "10px",
+                  color: "#ef4444",
+                  fontSize: "13px",
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {category}
+                ✕ Reset
               </button>
-            ))}
+            )}
           </div>
         </div>
 
+        {/* Grid produk */}
         {filteredProducts.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fill, minmax(250px, 1fr))",
-              gap: "20px",
-            }}
-          >
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+            gap: "20px",
+          }}>
             {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-              />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         ) : (
-          <div
-            style={{
-              textAlign: "center",
-              color: "#64748b",
-              padding: "100px 0",
-            }}
-          >
+          <div style={{ textAlign: "center", color: "#64748b", padding: "100px 0" }}>
             Tidak ada produk yang ditemukan.
           </div>
         )}
+
       </div>
     </div>
   );

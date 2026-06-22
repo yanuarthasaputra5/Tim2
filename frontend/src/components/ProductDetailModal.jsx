@@ -20,24 +20,63 @@ export default function ProductDetailModal({
   onClose,
 }) {
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedVariant, setSelectedVariant] =
-    useState(product?.variants?.[0] || null);
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
 
   if (!product) return null;
 
   const images = product.images || [];
   const variants = product.variants || [];
 
+  // Ambil ukuran unik dari nama variant (format: "S - Lengan pendek")
+  const sizes = [
+    ...new Set(
+      variants
+        .map((v) => v.name?.split(" - ")[0])
+        .filter(Boolean)
+    ),
+  ];
+
+  // Filter tipe berdasarkan ukuran yang dipilih
+  const typesForSize = selectedSize
+    ? variants.filter((v) =>
+        v.name?.startsWith(selectedSize + " - ")
+      )
+    : [];
+
+  // Cari variant yang cocok dengan kombinasi ukuran + tipe
+  const selectedVariant =
+    selectedSize && selectedType
+      ? variants.find(
+          (v) =>
+            v.name === `${selectedSize} - ${selectedType}`
+        ) || null
+      : null;
+
+  // Harga & stok aktif: ikuti variant yang dipilih, atau produk dasar
+  // jika produk ini memang tidak punya variant sama sekali.
+  const currentPrice = selectedVariant
+    ? selectedVariant.price
+    : product.price;
+
+  const currentStock = selectedVariant
+    ? selectedVariant.stock
+    : variants.length > 0
+    ? null // belum pilih variant lengkap
+    : product.stock;
+
+  // NOTE: sesuaikan dua field ini dengan bentuk data promo dari API kamu.
+  const hasPromo = Boolean(product.active_promo);
+  const originalPrice = product.original_price ?? product.price;
+
   const imageUrl = (url) => {
     if (!url)
       return "https://via.placeholder.com/500x500?text=No+Image";
-
     return `http://localhost:8000${url}`;
   };
 
   const nextImage = () => {
     if (images.length <= 1) return;
-
     setActiveImage((prev) =>
       prev === images.length - 1 ? 0 : prev + 1
     );
@@ -45,25 +84,10 @@ export default function ProductDetailModal({
 
   const prevImage = () => {
     if (images.length <= 1) return;
-
     setActiveImage((prev) =>
       prev === 0 ? images.length - 1 : prev - 1
     );
   };
-
-  const hasPromo = !!product.active_promo;
-
-  const originalPrice = selectedVariant
-    ? selectedVariant.price
-    : product.price;
-
-  const currentPrice = selectedVariant
-    ? (selectedVariant.discounted_price || selectedVariant.price)
-    : (product.discounted_price || product.price);
-
-  const currentStock = selectedVariant
-    ? selectedVariant.stock
-    : product.stock;
 
   return (
     <div
@@ -88,8 +112,7 @@ export default function ProductDetailModal({
           background: "#121318",
           borderRadius: "20px",
           overflow: "hidden",
-          border:
-            "1px solid rgba(255,255,255,.08)",
+          border: "1px solid rgba(255,255,255,.08)",
           display: "flex",
           position: "relative",
         }}
@@ -125,9 +148,7 @@ export default function ProductDetailModal({
           <img
             src={
               images.length
-                ? imageUrl(
-                    images[activeImage]?.url
-                  )
+                ? imageUrl(images[activeImage]?.url)
                 : "https://via.placeholder.com/500"
             }
             alt={product.name}
@@ -146,14 +167,12 @@ export default function ProductDetailModal({
                   position: "absolute",
                   left: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   width: 40,
                   height: 40,
                   borderRadius: "50%",
                   border: "none",
-                  background:
-                    "rgba(0,0,0,.5)",
+                  background: "rgba(0,0,0,.5)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -167,14 +186,12 @@ export default function ProductDetailModal({
                   position: "absolute",
                   right: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   width: 40,
                   height: 40,
                   borderRadius: "50%",
                   border: "none",
-                  background:
-                    "rgba(0,0,0,.5)",
+                  background: "rgba(0,0,0,.5)",
                   color: "#fff",
                   cursor: "pointer",
                 }}
@@ -202,9 +219,7 @@ export default function ProductDetailModal({
                   key={img.id}
                   src={imageUrl(img.url)}
                   alt=""
-                  onClick={() =>
-                    setActiveImage(index)
-                  }
+                  onClick={() => setActiveImage(index)}
                   style={{
                     width: 65,
                     height: 65,
@@ -251,19 +266,32 @@ export default function ProductDetailModal({
               display: "flex",
               alignItems: "baseline",
               gap: "10px",
-              flexWrap: "wrap"
+              flexWrap: "wrap",
             }}
           >
             {hasPromo ? (
               <>
                 <span>{formatRupiah(currentPrice)}</span>
-                <span style={{ fontSize: 16, color: "#64748b", textDecoration: "line-through", fontWeight: 400 }}>
+                <span
+                  style={{
+                    fontSize: 16,
+                    color: "#64748b",
+                    textDecoration: "line-through",
+                    fontWeight: 400,
+                  }}
+                >
                   {formatRupiah(originalPrice)}
                 </span>
-                <span style={{
-                  fontSize: "12px", fontWeight: 700, color: "#ffffff",
-                  background: "#ef4444", padding: "2px 8px", borderRadius: "4px"
-                }}>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                    background: "#ef4444",
+                    padding: "2px 8px",
+                    borderRadius: "4px",
+                  }}
+                >
                   {product.active_promo.name}
                 </span>
               </>
@@ -299,16 +327,19 @@ export default function ProductDetailModal({
             {product.description}
           </p>
 
-          {/* VARIANT */}
+          {/* PILIH UKURAN */}
           {variants.length > 0 && (
             <>
               <h4
                 style={{
-                  color: "#fff",
-                  marginBottom: 12,
+                  color: "#94a3b8",
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
                 }}
               >
-                Pilih Varian
+                Pilih Ukuran Kaos
               </h4>
 
               <div
@@ -319,104 +350,154 @@ export default function ProductDetailModal({
                   marginBottom: 24,
                 }}
               >
-                {variants.map((variant) => (
+                {sizes.map((size) => (
                   <button
-                    key={variant.id}
-                    onClick={() =>
-                      setSelectedVariant(
-                        variant
-                      )
-                    }
+                    key={size}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      setSelectedType(null); // reset tipe saat ukuran berubah
+                    }}
                     style={{
-                      padding:
-                        "10px 14px",
+                      width: 48,
+                      height: 48,
                       borderRadius: 10,
                       border:
-                        selectedVariant?.id ===
-                        variant.id
+                        selectedSize === size
                           ? "1px solid #f59e0b"
                           : "1px solid rgba(255,255,255,.1)",
                       background:
-                        selectedVariant?.id ===
-                        variant.id
+                        selectedSize === size
                           ? "rgba(245,158,11,.15)"
                           : "#1e1f24",
                       color: "#fff",
+                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    <div>
-                      {variant.name}
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#f59e0b",
-                        display: "flex",
-                        gap: "6px",
-                        alignItems: "center"
-                      }}
-                    >
-                      {hasPromo ? (
-                        <>
-                          <span>{formatRupiah(variant.discounted_price || variant.price)}</span>
-                          <span style={{ textDecoration: "line-through", color: "#64748b", fontSize: "11px" }}>
-                            {formatRupiah(variant.price)}
-                          </span>
-                        </>
-                      ) : (
-                        formatRupiah(variant.price)
-                      )}
-                    </div>
+                    {size}
                   </button>
                 ))}
               </div>
             </>
           )}
 
-          <div
-            style={{
-              marginBottom: 24,
-            }}
-          >
-            <span
-              style={{
-                padding:
-                  "6px 12px",
-                borderRadius: 20,
-                background:
-                  currentStock > 0
-                    ? "rgba(74,222,128,.1)"
-                    : "rgba(239,68,68,.1)",
-                color:
-                  currentStock > 0
-                    ? "#4ade80"
-                    : "#ef4444",
-                fontWeight: 600,
-              }}
-            >
-              Stok : {currentStock}
-            </span>
+          {/* PILIH TIPE */}
+          {selectedSize && typesForSize.length > 0 && (
+            <>
+              <h4
+                style={{
+                  color: "#94a3b8",
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                }}
+              >
+                Pilih Tipe
+              </h4>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginBottom: 24,
+                }}
+              >
+                {typesForSize.map((variant) => {
+                  const type = variant.name?.split(" - ")[1];
+                  return (
+                    <button
+                      key={variant.id}
+                      onClick={() => setSelectedType(type)}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border:
+                          selectedType === type
+                            ? "1px solid #f59e0b"
+                            : "1px solid rgba(255,255,255,.1)",
+                        background:
+                          selectedType === type
+                            ? "rgba(245,158,11,.15)"
+                            : "#1e1f24",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div>{type}</div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#f59e0b",
+                        }}
+                      >
+                        {formatRupiah(variant.price)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* STOK */}
+          <div style={{ marginBottom: 24 }}>
+            {currentStock === null ? (
+              <span
+                style={{
+                  color: "#64748b",
+                  fontSize: 13,
+                }}
+              >
+                Pilih ukuran dan tipe untuk melihat stok
+              </span>
+            ) : (
+              <span
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  background:
+                    currentStock > 0
+                      ? "rgba(74,222,128,.1)"
+                      : "rgba(239,68,68,.1)",
+                  color:
+                    currentStock > 0 ? "#4ade80" : "#ef4444",
+                  fontWeight: 600,
+                }}
+              >
+                Stok: {currentStock}
+              </span>
+            )}
           </div>
 
+          {/* TOMBOL KERANJANG */}
           <button
-            disabled={currentStock <= 0}
+            disabled={
+              (variants.length > 0 && !selectedVariant) ||
+              !currentStock ||
+              currentStock <= 0
+            }
             style={{
               width: "100%",
               padding: "14px",
               borderRadius: 12,
               border: "none",
               background:
+                (variants.length === 0 || selectedVariant) &&
                 currentStock > 0
                   ? "#f59e0b"
                   : "#334155",
               color:
+                (variants.length === 0 || selectedVariant) &&
                 currentStock > 0
                   ? "#000"
                   : "#94a3b8",
               fontWeight: 700,
               cursor:
+                (variants.length === 0 || selectedVariant) &&
                 currentStock > 0
                   ? "pointer"
                   : "not-allowed",
@@ -427,7 +508,9 @@ export default function ProductDetailModal({
             }}
           >
             <ShoppingCart size={16} />
-            {currentStock > 0
+            {variants.length > 0 && !selectedVariant
+              ? "Pilih Varian Terlebih Dahulu"
+              : currentStock > 0
               ? "Tambah ke Keranjang"
               : "Stok Habis"}
           </button>

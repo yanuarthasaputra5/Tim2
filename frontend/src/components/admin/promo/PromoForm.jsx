@@ -33,11 +33,16 @@ const empty = {
   product_ids: [],
 };
 
+// FIX: dulu pakai toISOString() yang konversi ke UTC, bikin tanggal mundur
+// sehari kalau jam lokalnya di bawah 07:00 WIB. Sekarang pakai getter lokal
+// (getFullYear/getMonth/getDate/getHours/getMinutes) supaya tanggal & jam
+// yang ditampilkan di form persis sama dengan yang tersimpan, tanpa konversi.
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 16);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 export default function PromoForm({ promo, onSubmit, products = [], categories = [] }) {
@@ -46,13 +51,15 @@ export default function PromoForm({ promo, onSubmit, products = [], categories =
   useEffect(() => {
     if (promo) {
       setForm({
-        name:         promo.name         || "",
-        type:         promo.type         || "percent",
-        value:        promo.value        ?? "",
-        starts_at:    formatDateForInput(promo.starts_at),
-        ends_at:      formatDateForInput(promo.ends_at),
-        is_active:    promo.is_active    ?? true,
-        product_ids:  (promo.products || []).map(p => p.id),
+        name:        promo.name        || "",
+        type:        promo.type        || "percent",
+        value:       promo.value       ?? "",
+        starts_at:   formatDateForInput(promo.starts_at),
+        ends_at:     formatDateForInput(promo.ends_at),
+        // ✅ FIX: Boolean() memastikan nilai 0/1/"0"/"1" dari API
+        // dikonversi dengan benar ke true/false
+        is_active:   Boolean(promo.is_active),
+        product_ids: (promo.products || []).map(p => p.id),
       });
     } else {
       setForm(empty);
@@ -67,12 +74,13 @@ export default function PromoForm({ promo, onSubmit, products = [], categories =
     e.preventDefault();
 
     const payload = {
-      name:       form.name,
-      type:       form.type,
-      value:      Number(form.value),
-      starts_at:  form.starts_at,
-      ends_at:    form.ends_at,
-      is_active:  form.is_active,
+      name:        form.name,
+      type:        form.type,
+      value:       Number(form.value),
+      starts_at:   form.starts_at,
+      ends_at:     form.ends_at,
+      // ✅ FIX: Pastikan is_active selalu dikirim sebagai boolean murni
+      is_active:   Boolean(form.is_active),
       product_ids: form.product_ids,
     };
 
@@ -185,7 +193,7 @@ export default function PromoForm({ promo, onSubmit, products = [], categories =
             />
           </div>
 
-          {/* Status */}
+          {/* ✅ Status — value/onChange sudah benar, is_active sekarang pasti boolean */}
           <div>
             <label style={labelStyle}>Status</label>
             <select
@@ -203,7 +211,10 @@ export default function PromoForm({ promo, onSubmit, products = [], categories =
         {products.length > 0 && (
           <div style={{ marginBottom: "16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-              <label style={labelStyle}>Pilih Produk yang Didiskon <span style={{ color: "#ef4444" }}>*</span> <span style={{ color: "#475569", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(pilih minimal satu)</span></label>
+              <label style={labelStyle}>
+                Pilih Produk yang Didiskon <span style={{ color: "#ef4444" }}>*</span>{" "}
+                <span style={{ color: "#475569", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(pilih minimal satu)</span>
+              </label>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button
                   type="button"

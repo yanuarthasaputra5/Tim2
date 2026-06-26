@@ -130,7 +130,7 @@ function ImageSlider({ images, aspectRatio = '4/3', maxHeight }) {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
-function ProductModal({ product, onClose }) {
+function ProductModal({ product, intent = 'add', onClose }) {
   const images = getImages(product);
   const variants = product.variants || [];
 
@@ -325,7 +325,7 @@ function ProductModal({ product, onClose }) {
             )}
           </div>
 
-          {/* TOMBOL KERANJANG */}
+          {/* TOMBOL AKSI — teksnya ikut intent dari mana modal ini dibuka */}
           <button
             disabled={!selectedVariant || currentStock <= 0}
             style={{
@@ -341,9 +341,11 @@ function ProductModal({ product, onClose }) {
             <ShoppingCart size={16} />
             {!selectedVariant
               ? 'Pilih Varian Terlebih Dahulu'
-              : currentStock > 0
-              ? 'Tambah ke Keranjang'
-              : 'Stok Habis'}
+              : currentStock <= 0
+              ? 'Stok Habis'
+              : intent === 'buy'
+              ? 'Beli Sekarang'
+              : 'Tambah ke Keranjang'}
           </button>
         </div>
       </div>
@@ -355,16 +357,27 @@ function ProductModal({ product, onClose }) {
 export default function ProductCard({ product }) {
   const [hovered, setHovered] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [modalIntent, setModalIntent] = useState('add'); // 'add' | 'buy'
 
   const isOutOfStock = product.stock === 0;
   const images = getImages(product);
 
+  const openModal = (intent) => {
+    setModalIntent(intent);
+    setShowModal(true);
+  };
+
   return (
     <>
-      {showModal && <ProductModal product={product} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <ProductModal
+          product={product}
+          intent={modalIntent}
+          onClose={() => setShowModal(false)}
+        />
+      )}
 
       <div
-        onClick={() => setShowModal(true)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -375,7 +388,7 @@ export default function ProductCard({ product }) {
           transition: 'border-color 0.2s, transform 0.2s, box-shadow 0.2s',
           transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
           boxShadow: hovered ? '0 12px 32px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.2)',
-          cursor: 'pointer',
+          cursor: 'default',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -464,23 +477,67 @@ export default function ProductCard({ product }) {
               {product.stock > 0 ? `Stok: ${product.stock}` : 'Habis'}
             </span>
           </div>
-          <button
-            disabled={isOutOfStock}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              marginTop: '6px', width: '100%', padding: '10px',
-              borderRadius: '10px', border: 'none',
-              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-              background: isOutOfStock ? 'rgba(255,255,255,0.05)' : hovered ? '#f59e0b' : 'rgba(245,158,11,0.15)',
-              color: isOutOfStock ? '#475569' : hovered ? '#000' : '#f59e0b',
-              fontSize: '13px', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              transition: 'background 0.2s, color 0.2s',
-            }}
-          >
-            <ShoppingCart size={15} />
-            {isOutOfStock ? 'Stok Habis' : 'Tambah ke Keranjang'}
-          </button>
+          {isOutOfStock ? (
+            <button
+              disabled
+              style={{
+                marginTop: '6px', width: '100%', padding: '10px',
+                borderRadius: '10px', border: 'none',
+                cursor: 'not-allowed',
+                background: 'rgba(255,255,255,0.05)',
+                color: '#475569',
+                fontSize: '13px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+              }}
+            >
+              Stok Habis
+            </button>
+          ) : (
+            <div style={{ marginTop: '6px', display: 'flex', gap: '8px' }}>
+              {/* Icon keranjang — buka modal detail, CTA di dalamnya jadi "Tambah ke Keranjang" */}
+              <button
+                onClick={(e) => { e.stopPropagation(); openModal('add'); }}
+                aria-label="Tambah ke keranjang"
+                style={{
+                  flexShrink: 0,
+                  width: '42px', height: '42px',
+                  borderRadius: '10px', border: 'none',
+                  background: 'rgba(245,158,11,0.12)',
+                  color: '#f59e0b',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245,158,11,0.22)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(245,158,11,0.12)')}
+              >
+                <ShoppingCart size={18} />
+              </button>
+
+              {/* Beli Sekarang — buka modal detail, CTA di dalamnya jadi "Beli Sekarang" */}
+              <button
+                onClick={(e) => { e.stopPropagation(); openModal('buy'); }}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  borderRadius: '10px', border: 'none',
+                  background: '#f59e0b',
+                  color: '#000',
+                  cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1.25,
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#fbbf24')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#f59e0b')}
+              >
+                <span style={{ fontSize: '13px', fontWeight: 800 }}>Beli Sekarang</span>
+                <span style={{ fontSize: '11px', fontWeight: 600 }}>
+                  {formatRupiah(product.active_promo ? product.discounted_price : product.price)}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

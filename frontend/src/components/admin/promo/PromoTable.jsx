@@ -10,7 +10,6 @@ export default function PromoTable({ promos, loading, onEdit, onDelete }) {
     }
   };
 
-
   const formatValue = (promo) => {
     if (promo.type === 'percent') return `${Number(promo.value)}%`;
     if (promo.type === 'fixed') return `Rp ${Number(promo.value).toLocaleString('id-ID')}`;
@@ -24,10 +23,16 @@ export default function PromoTable({ promos, loading, onEdit, onDelete }) {
     });
   };
 
-  const isPromoActive = (promo) => {
-    if (!promo.is_active) return false;
+  // Aktif/Nonaktif murni dari is_active (di-set manual lewat form/toggle).
+  // Tanggal TIDAK ikut menentukan badge ini — itu cuma info tambahan (lihat getDateStatus).
+  const isPromoActive = (promo) => Boolean(promo.is_active);
+
+  // Badge info tanggal: otomatis "Kedaluwarsa" jika ends_at sudah lewat
+  const getDateStatus = (promo) => {
     const now = new Date();
-    return new Date(promo.starts_at) <= now && new Date(promo.ends_at) >= now;
+    if (promo.ends_at && new Date(promo.ends_at) < now) return 'expired';
+    if (promo.starts_at && new Date(promo.starts_at) > now) return 'upcoming';
+    return 'ongoing';
   };
 
   if (loading) {
@@ -118,7 +123,8 @@ export default function PromoTable({ promos, loading, onEdit, onDelete }) {
             </thead>
             <tbody>
               {promos.map((promo, idx) => {
-                const active = isPromoActive(promo);
+                const active     = isPromoActive(promo);
+                const dateStatus = getDateStatus(promo);
 
                 return (
                   <tr
@@ -179,27 +185,51 @@ export default function PromoTable({ promos, loading, onEdit, onDelete }) {
                       )}
                     </td>
 
-                    {/* Status */}
+                    {/* Status — berdasarkan is_active saja + badge tanggal terpisah */}
                     <td style={{ padding: '13px 16px' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '3px 10px',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        background: active ? 'rgba(16,185,129,.1)' : 'rgba(239,68,68,.1)',
-                        border: `1px solid ${active ? 'rgba(16,185,129,.2)' : 'rgba(239,68,68,.2)'}`,
-                        color: active ? '#10b981' : '#ef4444',
-                      }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {/* Badge is_active */}
                         <span style={{
-                          width: 5, height: 5, borderRadius: '50%',
-                          background: active ? '#10b981' : '#ef4444',
-                          flexShrink: 0,
-                        }} />
-                        {active ? 'Aktif' : 'Nonaktif'}
-                      </span>
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '3px 10px',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: active ? 'rgba(16,185,129,.1)' : 'rgba(239,68,68,.1)',
+                          border: `1px solid ${active ? 'rgba(16,185,129,.2)' : 'rgba(239,68,68,.2)'}`,
+                          color: active ? '#10b981' : '#ef4444',
+                          width: 'fit-content',
+                        }}>
+                          <span style={{
+                            width: 5, height: 5, borderRadius: '50%',
+                            background: active ? '#10b981' : '#ef4444',
+                            flexShrink: 0,
+                          }} />
+                          {active ? 'Aktif' : 'Nonaktif'}
+                        </span>
+
+                        {/* Badge tanggal — hanya info tambahan, cuma tampil saat status Nonaktif */}
+                        {!active && dateStatus === 'expired' && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600,
+                            color: '#94a3b8',
+                            letterSpacing: '0.03em',
+                          }}>
+                            Kedaluwarsa
+                          </span>
+                        )}
+                        {!active && dateStatus === 'upcoming' && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600,
+                            color: '#60a5fa',
+                            letterSpacing: '0.03em',
+                          }}>
+                            Belum Mulai
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Aksi */}
